@@ -1,8 +1,24 @@
 {
-  "name": "pinglet",
+  "name": "pinglet-cli",
   "version": "0.1.0",
   "description": "AI가 생각하는 동안 다른 개발자의 Ping을 만나는 메시지 네트워크 — Claude Code / Codex integration",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mabyko/pinglet-client.git"
+  },
+  "homepage": "https://github.com/mabyko/pinglet-client#readme",
+  "bugs": {
+    "url": "https://github.com/mabyko/pinglet-client/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "statusline",
+    "spinner",
+    "cli",
+    "developer-community"
+  ],
   "bin": {
     "pinglet": "dist/cli.js"
   },

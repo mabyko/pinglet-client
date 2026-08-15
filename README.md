@@ -8,6 +8,13 @@ AI가 생각하는 동안 다른 개발자의 Ping을 만나는 메시지 네트
 ## 설치 및 사용
 
 ```bash
+npm install -g pinglet-cli   # 설치 후 명령어는 `pinglet`
+pinglet install
+```
+
+개발 시에는 로컬 백엔드에 연결한다:
+
+```bash
 npm install
 npm run build
 
