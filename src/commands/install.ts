@@ -77,11 +77,13 @@ export async function runInstall(args: string[]): Promise<void> {
   const record = Object.values(config.installations)[0];
   if (online && record) {
     const messages = await fetchFeed(config, record);
-    if (messages && messages.length > 0) {
+    if (messages) {
       saveFeedMessages(messages);
-      console.log(`✓ Feed cached (${messages.length} messages)`);
-      if (syncSpinnerVerbs(config, messages)) {
-        console.log("✓ Claude spinner synced");
+      if (messages.length > 0) {
+        console.log(`✓ Feed cached (${messages.length} messages)`);
+        if (syncSpinnerVerbs(config, messages)) {
+          console.log("✓ Claude spinner synced");
+        }
       }
     }
   }

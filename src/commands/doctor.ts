@@ -58,9 +58,8 @@ export async function runDoctor(): Promise<void> {
   // 로컬 캐시 / 큐
   const messages = loadFeedMessages();
   const age = feedAgeMs();
-  const seeded = messages.every((m) => m.id.startsWith("seed_"));
-  if (seeded) {
-    warn(`Feed cache: 시드 메시지 ${messages.length}개 (서버 feed 미수신)`);
+  if (messages.length === 0) {
+    warn("Feed cache 비어 있음 — 기본 spinner로 표시 중 (서버 feed 수신 후 Ping 표시)");
   } else {
     const ageMin = age === null ? "?" : Math.round(age / 60_000);
     ok(`Feed cache: ${messages.length}개 (${ageMin}분 전 갱신)`);

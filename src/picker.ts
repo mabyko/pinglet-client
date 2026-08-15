@@ -8,7 +8,8 @@ import { FeedMessage, RuntimeState } from "./types";
 export function pickMessage(
   messages: FeedMessage[],
   state: RuntimeState,
-): FeedMessage {
+): FeedMessage | null {
+  if (messages.length === 0) return null;
   const current = state.current;
 
   let candidates = messages;

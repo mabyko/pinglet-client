@@ -9,13 +9,19 @@ const REASON_LABELS: Record<string, string> = {
   BANNED_WORD: "정책상 검토가 필요한 표현이 포함되어 있습니다",
 };
 
-/** `pinglet post "메시지" [--category <카테고리>]` */
+/**
+ * `pinglet post "메시지" [--category <카테고리>] [--quiet]`
+ * --quiet: /pinglet slash command용 — id/로그인 안내 없이 결과 한 줄만 출력.
+ */
 export async function runPost(args: string[]): Promise<void> {
   let category: string | undefined;
+  let quiet = false;
   const rest: string[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--category" && args[i + 1]) {
       category = args[++i];
+    } else if (args[i] === "--quiet") {
+      quiet = true;
     } else {
       rest.push(args[i]);
     }
@@ -58,16 +64,18 @@ export async function runPost(args: string[]): Promise<void> {
   switch (result.status) {
     case "APPROVED":
       console.log("✓ 메시지가 등록됐습니다. 곧 다른 개발자들의 터미널에 표시됩니다.");
-      console.log(`  id: ${result.id}`);
-      if (!config.userToken) {
-        console.log(
-          "  '익명의 개발자'로 표시됩니다 — 닉네임을 달려면 `pinglet login`",
-        );
+      if (!quiet) {
+        console.log(`  id: ${result.id}`);
+        if (!config.userToken) {
+          console.log(
+            "  '익명의 개발자'로 표시됩니다 — 닉네임을 달려면 `pinglet login`",
+          );
+        }
       }
       break;
     case "PENDING_REVIEW":
       console.log(`○ 메시지가 검토 대기 중입니다${reason ? ` — ${reason}` : ""}.`);
-      console.log("  승인되면 feed에 노출됩니다.");
+      if (!quiet) console.log("  승인되면 feed에 노출됩니다.");
       break;
     case "REJECTED":
       console.log(`✗ 메시지가 거절됐습니다${reason ? ` — ${reason}` : ""}.`);

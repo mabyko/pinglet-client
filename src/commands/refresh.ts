@@ -31,9 +31,10 @@ export async function runRefresh(): Promise<void> {
   await Promise.all(records.map((r) => sendHeartbeat(config, r)));
 
   const messages = await fetchFeed(config, records[0]);
-  if (messages && messages.length > 0) {
+  if (messages) {
     saveFeedMessages(messages);
     // 새 feed를 Claude Code spinner verb에도 반영한다 (설정 파일만 다시 쓰면 됨).
+    // feed가 비었으면 spinner를 기본 상태로 되돌린다.
     syncSpinnerVerbs(config, messages);
   }
 }

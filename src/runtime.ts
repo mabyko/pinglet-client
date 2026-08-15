@@ -11,7 +11,7 @@ export const FLUSH_INTERVAL_MS = 60_000; // batch 전송 주기
 export const FLUSH_COUNT = 20; // 또는 이벤트 개수 기준
 export const FEED_TTL_MS = 30 * 60_000; // feed 캐시 갱신 주기
 
-/** 시드 메시지는 서버에 존재하지 않는 messageId라 이벤트를 만들지 않는다. */
+/** 구버전 시드 메시지 id는 서버에 존재하지 않으므로 이벤트를 만들지 않는다. */
 function isServerMessage(messageId: string): boolean {
   return !messageId.startsWith("seed_");
 }
@@ -19,12 +19,13 @@ function isServerMessage(messageId: string): boolean {
 /**
  * 이전 메시지의 QUALIFIED_IMPRESSION을 정산하고 다음 메시지를 뽑는다.
  * 렌더링 path이므로 네트워크 호출 없이 로컬 캐시만 읽는다 (Local-first).
+ * feed가 비어 있으면 null — 호출부는 아무것도 표시하지 않는다.
  */
 export function rotateMessage(
   state: RuntimeState,
   agentType: AgentType,
   now: number,
-): FeedMessage {
+): FeedMessage | null {
   const prev = state.current;
   if (prev && isServerMessage(prev.messageId)) {
     // 세션이 중간에 끊겼으면 마지막 tick까지만 보였다고 간주한다.
@@ -43,6 +44,10 @@ export function rotateMessage(
   }
 
   const message = pickMessage(loadFeedMessages(), state);
+  if (!message) {
+    delete state.current;
+    return null;
+  }
   if (isServerMessage(message.id)) {
     appendEvent({ agentType, type: "DELIVERED", messageId: message.id });
   }

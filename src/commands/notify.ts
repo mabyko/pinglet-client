@@ -24,9 +24,12 @@ export function runNotify(args: string[]): void {
   const state = loadState();
   const now = Date.now();
   const message = pickMessage(loadFeedMessages(), state);
-  if (!message.id.startsWith("seed_")) {
-    appendEvent({ agentType: "CODEX", type: "DELIVERED", messageId: message.id });
+  if (!message) {
+    runMaintenance(state, now);
+    saveState(state);
+    return;
   }
+  appendEvent({ agentType: "CODEX", type: "DELIVERED", messageId: message.id });
   state.seen[message.id] = (state.seen[message.id] ?? 0) + 1;
   runMaintenance(state, now);
   saveState(state);

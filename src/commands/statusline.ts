@@ -15,7 +15,8 @@ export function runStatusline(): void {
   let line: string;
   if (!current || now - current.shownAt >= ROTATE_MS) {
     const message = rotateMessage(state, "CLAUDE", now);
-    line = formatPing(message);
+    // feed가 없으면 빈 줄 — statusLine에 아무것도 그리지 않는다.
+    line = message ? formatPing(message) : "";
     runMaintenance(state, now);
     state.lastTickAt = now;
     saveState(state);

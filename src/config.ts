@@ -12,7 +12,7 @@ export const STATE_PATH = path.join(PINGLET_DIR, "state.json");
 export const EVENTS_PATH = path.join(PINGLET_DIR, "events.jsonl");
 
 export const DEFAULT_API_BASE_URL =
-  process.env.PINGLET_API_URL ?? "http://localhost:3000";
+  process.env.PINGLET_API_URL ?? "https://pinglet.halluci.co.kr";
 
 export interface PingletConfig {
   apiBaseUrl: string;

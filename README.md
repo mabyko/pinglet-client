@@ -30,6 +30,17 @@ codex    # turn 완료 시 macOS 알림으로 Ping 전달 (experimental)
 
 내부 명령(integration이 호출): `statusline`, `notify`, `flush`, `refresh`
 
+### 세션 안에서 바로 작성
+
+Claude Code 세션에서 `/pinglet 메시지`를 입력하면 등록된다.
+install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며,
+등록 자체는 command 안의 인라인 bash 실행(`pinglet post`)이 수행하고
+모델은 결과 한 줄만 전달하므로 토큰 사용이 매우 적다.
+
+```
+> /pinglet 금요일 오후 배포는 다음 생에 합시다.
+```
+
 ## Integration 방식
 
 - **Claude Adapter** — `~/.claude/settings.json`의 `statusLine` hook에

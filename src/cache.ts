@@ -4,16 +4,16 @@ import {
   readJsonFile,
   writeJsonFile,
 } from "./config";
-import { SEED_MESSAGES } from "./seed";
 import { FeedCacheFile, FeedMessage, RuntimeState } from "./types";
 
-/** 렌더링 path에서 호출되므로 전부 동기 I/O — 네트워크는 절대 타지 않는다. */
+/**
+ * 렌더링 path에서 호출되므로 전부 동기 I/O — 네트워크는 절대 타지 않는다.
+ * 서버 feed를 아직 못 받았으면 빈 배열 — Pinglet은 아무것도 표시하지 않고
+ * Claude Code 기본 spinner가 그대로 유지된다.
+ */
 export function loadFeedMessages(): FeedMessage[] {
   const cache = readJsonFile<FeedCacheFile>(FEED_PATH);
-  if (cache?.messages?.length) {
-    return cache.messages;
-  }
-  return SEED_MESSAGES;
+  return cache?.messages ?? [];
 }
 
 export function saveFeedMessages(messages: FeedMessage[]): void {
