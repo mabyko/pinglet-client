@@ -1,0 +1,53 @@
+import {
+  FEED_PATH,
+  STATE_PATH,
+  readJsonFile,
+  writeJsonFile,
+} from "./config";
+import { SEED_MESSAGES } from "./seed";
+import { FeedCacheFile, FeedMessage, RuntimeState } from "./types";
+
+/** 렌더링 path에서 호출되므로 전부 동기 I/O — 네트워크는 절대 타지 않는다. */
+export function loadFeedMessages(): FeedMessage[] {
+  const cache = readJsonFile<FeedCacheFile>(FEED_PATH);
+  if (cache?.messages?.length) {
+    return cache.messages;
+  }
+  return SEED_MESSAGES;
+}
+
+export function saveFeedMessages(messages: FeedMessage[]): void {
+  const file: FeedCacheFile = {
+    fetchedAt: new Date().toISOString(),
+    messages,
+  };
+  writeJsonFile(FEED_PATH, file);
+}
+
+/** 서버 feed를 마지막으로 받은 시점부터의 경과(ms). 캐시가 없으면 null. */
+export function feedAgeMs(): number | null {
+  const cache = readJsonFile<FeedCacheFile>(FEED_PATH);
+  if (!cache?.fetchedAt) return null;
+  const t = Date.parse(cache.fetchedAt);
+  return Number.isNaN(t) ? null : Date.now() - t;
+}
+
+export function loadState(): RuntimeState {
+  const state = readJsonFile<RuntimeState>(STATE_PATH);
+  if (state) {
+    state.seen ??= {};
+    return state;
+  }
+  return { seen: {} };
+}
+
+export function saveState(state: RuntimeState): void {
+  // seen map이 무한히 자라지 않게 상한을 둔다.
+  const keys = Object.keys(state.seen);
+  if (keys.length > 500) {
+    for (const key of keys.slice(0, keys.length - 500)) {
+      delete state.seen[key];
+    }
+  }
+  writeJsonFile(STATE_PATH, state);
+}
