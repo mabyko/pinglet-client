@@ -78,7 +78,11 @@ export function saveConfig(config: PingletConfig): void {
   writeJsonFile(CONFIG_PATH, config);
 }
 
-/** 현재 실행 중인 CLI 엔트리(dist/cli.js)의 절대 경로. adapter command에 박아 넣는다. */
+/**
+ * CLI 엔트리(dist/cli.js)의 절대 경로. adapter command에 박아 넣는다.
+ * argv[1] 대신 __dirname 기준으로 계산해 postinstall 등 다른 엔트리에서
+ * 호출돼도 항상 cli.js를 가리킨다.
+ */
 export function cliPath(): string {
-  return fs.realpathSync(process.argv[1]);
+  return path.join(__dirname, "cli.js");
 }

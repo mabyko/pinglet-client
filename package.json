@@ -1,6 +1,6 @@
 {
   "name": "pinglet-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI가 생각하는 동안 다른 개발자의 Ping을 만나는 메시지 네트워크 — Claude Code / Codex integration",
   "license": "MIT",
   "repository": {
@@ -28,7 +28,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "postinstall": "node dist/postinstall.js || exit 0"
   },
   "engines": {
     "node": ">=18"

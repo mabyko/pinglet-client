@@ -9,7 +9,17 @@ AI가 생각하는 동안 다른 개발자의 Ping을 만나는 메시지 네트
 
 ```bash
 npm install -g pinglet-cli   # 설치 후 명령어는 `pinglet`
-pinglet install
+```
+
+npm 글로벌 설치 시 postinstall이 `pinglet install`까지 자동 수행한다.
+(pnpm/bun처럼 postinstall을 차단하는 매니저에서는 `pinglet install`을 직접 실행)
+
+제거할 때는 반드시 integration 정리를 먼저 한다 — npm은 uninstall 시
+스크립트를 실행하지 않으므로 순서가 바뀌면 설정이 남는다:
+
+```bash
+pinglet uninstall
+npm uninstall -g pinglet-cli
 ```
 
 개발 시에는 로컬 백엔드에 연결한다:
