@@ -4,6 +4,8 @@ import { feedAgeMs } from "./cache";
 import { countEvents } from "./queue";
 import { RuntimeState } from "./types";
 
+export const ROTATE_MS = 60_000; // spinner 메시지 교체 주기 (설정 핫리로드로 즉시 반영)
+export const QUALIFIED_MS = 3_000; // 유효 노출로 인정하는 최소 spinner 가동 시간
 export const FLUSH_INTERVAL_MS = 60_000; // batch 전송 주기
 export const FLUSH_COUNT = 20; // 또는 이벤트 개수 기준
 export const FEED_TTL_MS = 5 * 60_000; // feed 캐시 갱신 주기

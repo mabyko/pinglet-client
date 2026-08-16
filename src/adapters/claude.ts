@@ -184,13 +184,15 @@ function cleanupSpinnerTips(
 }
 
 /**
- * Claude Code spinner verb("Befuddling…" 자리)를 feed 메시지로 교체한다.
- * mode: "replace"라 기본 verb 대신 Ping이 그대로 spinner 본문에 표시된다.
+ * Claude Code spinner verb("Befuddling…" 자리)에 메시지 **하나만** armed한다.
+ * pool을 1개로 유지해야 "spinner가 돌았다 = 이 메시지가 표시됐다"가 확정되고,
+ * cost 델타 기반 노출 측정(statusline)이 정확해진다. 설정은 핫리로드된다.
+ * message가 null이면 우리 verb를 걷어내고 기본 spinner로 되돌린다.
  * 마커가 붙은 항목만 Pinglet 소유로 보고 교체하며, 사용자 verb는 유지한다.
  */
-export function syncSpinnerVerbs(
+export function armSpinnerMessage(
   config: PingletConfig,
-  messages: FeedMessage[],
+  message: FeedMessage | null,
 ): boolean {
   const adapter = config.adapters.claude;
   if (!adapter) return false;
@@ -209,10 +211,9 @@ export function syncSpinnerVerbs(
   }
 
   const userVerbs = existingVerbs.filter((verb) => !isPingletTip(verb));
-  const pingletVerbs = buildPingletVerbs(messages);
+  const pingletVerbs = message ? buildPingletVerbs([message]) : [];
 
-  // 실제 feed 메시지가 없으면 spinner를 교체하지 않는다 —
-  // 우리가 넣어둔 verb가 있으면 걷어내고 Claude Code 기본 spinner로 되돌린다.
+  // armed할 메시지가 없으면 spinner를 기본 상태로 되돌린다.
   if (pingletVerbs.length === 0) {
     if (!isOurs) return false;
     const backup = adapter.spinnerVerbsBackup;
@@ -229,10 +230,17 @@ export function syncSpinnerVerbs(
     return false;
   }
 
-  settings.spinnerVerbs = {
-    mode: "replace",
-    verbs: [...userVerbs, ...pingletVerbs],
-  };
+  const next = [...userVerbs, ...pingletVerbs];
+  // 같은 메시지를 다시 armed하는 경우 파일 쓰기를 생략한다 (300ms 렌더링 경로 보호).
+  if (
+    existing?.mode === "replace" &&
+    existingVerbs.length === next.length &&
+    existingVerbs.every((v, i) => v === next[i])
+  ) {
+    return true;
+  }
+
+  settings.spinnerVerbs = { mode: "replace", verbs: next };
   writeSettings(settings);
   return true;
 }
@@ -281,7 +289,7 @@ export function installClaudeIntegration(
   installSlashCommand();
 
   // spinner verb는 로컬 캐시에 실제 feed가 있을 때만 채운다. 없으면 기본 spinner 유지.
-  syncSpinnerVerbs(config, loadFeedMessages());
+  armSpinnerMessage(config, loadFeedMessages()[0] ?? null);
   return { ok: true };
 }
 

@@ -4,7 +4,7 @@ import { saveFeedMessages } from "../cache";
 import {
   detectClaude,
   installClaudeIntegration,
-  syncSpinnerVerbs,
+  armSpinnerMessage,
 } from "../adapters/claude";
 import { detectCodex, installCodexIntegration } from "../adapters/codex";
 import { AgentType } from "../types";
@@ -81,7 +81,7 @@ export async function runInstall(args: string[]): Promise<void> {
       saveFeedMessages(messages);
       if (messages.length > 0) {
         console.log(`✓ Feed cached (${messages.length} messages)`);
-        if (syncSpinnerVerbs(config, messages)) {
+        if (armSpinnerMessage(config, messages[0] ?? null)) {
           console.log("✓ Claude spinner synced");
         }
       }

@@ -64,10 +64,12 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   `node <cli> statusline`을 연결한다. statusline은 UI 영역이라 LLM context에
   전혀 들어가지 않으며(Zero Token), Thinking/Working 중에 메시지가 보인다.
   기존 statusLine 설정은 백업 후 uninstall 시 복원한다.
-  - **Spinner verbs** — `refresh` 배치가 feed를 받을 때 `spinnerVerbs`(mode:
-    "replace")에도 메시지를 등록해, "Befuddling…" 같은 기본 verb 자리에 Ping이
-    그대로 표시된다. Pinglet이 쓴 verb는 zero-width space 마커로 식별하므로
-    사용자가 직접 등록한 verb는 건드리지 않고, uninstall 시 원래대로 복원한다.
+  - **Spinner verbs (pool=1 회전)** — `spinnerVerbs`(mode: "replace")에 메시지를
+    **한 번에 하나만** 등록해 "Befuddling…" 자리에 Ping이 표시된다. statusline이
+    60초마다 다음 메시지로 교체하며, Claude Code가 설정을 핫리로드하므로 세션
+    중에도 즉시 반영된다. pool이 1개라 "spinner가 돌았다 = 이 메시지가 표시됐다"가
+    확정된다. Pinglet verb는 zero-width space 마커로 식별하므로 사용자가 직접
+    등록한 verb는 건드리지 않고, uninstall 시 원래대로 복원한다.
 - **Codex Adapter (experimental)** — `~/.codex/config.toml`의 `notify` hook에 연결.
   notify는 TUI 밖 프로세스라 터미널 안에 그릴 수 없어, MVP에서는 turn 완료 시
   macOS 알림으로 전달한다.
@@ -79,9 +81,11 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   네트워크가 절대 들어가지 않는다.
 - **오프라인 동작** — 서버 미연결 시 시드 메시지로 동작하고, 등록/feed 갱신은
   백그라운드 `refresh`가 온라인이 되면 자동 재시도한다.
-- **DELIVERED / QUALIFIED_IMPRESSION 분리** — 메시지 표시 시 DELIVERED를 기록하고,
-  30초 회전 주기에 3초 이상 유지된 메시지만 QUALIFIED_IMPRESSION(visibleMs 포함)으로
-  정산한다. 세션이 끊긴 구간은 마지막 tick까지만 노출로 계산한다.
+- **DELIVERED / QUALIFIED_IMPRESSION 분리** — 메시지가 spinner에 armed되면
+  DELIVERED(설치당 1회), armed된 동안 spinner가 3초 이상 실제로 돌았으면
+  QUALIFIED_IMPRESSION(visibleMs 포함)으로 정산한다. "실제로 돌았는지"는
+  statusline hook이 받는 `cost.total_api_duration_ms` 증가분으로 측정한다 —
+  pool이 1개이므로 API 활동 시간만큼 그 메시지가 표시된 것이 확정된다.
 - **Async Telemetry** — 이벤트는 `~/.pinglet/events.jsonl`(Local Event Queue)에
   append하고, 20개 이상 또는 60초 주기로 detached 프로세스가 batch 전송한다.
   전송 성공분만 큐에서 제거하므로 실패분은 자동 재시도되며, 재전송 중복은

@@ -12,8 +12,7 @@ import {
   saveMyStats,
   saveState,
 } from "../cache";
-import { appendEvent } from "../queue";
-import { syncSpinnerVerbs } from "../adapters/claude";
+import { armSpinnerMessage } from "../adapters/claude";
 import { AgentType } from "../types";
 
 /**
@@ -45,23 +44,14 @@ export async function runRefresh(): Promise<void> {
   const messages = await fetchFeed(config, records[0]);
   if (messages) {
     saveFeedMessages(messages);
-    // 새 feed를 Claude Code spinner verb에도 반영한다 (설정 파일만 다시 쓰면 됨).
-    // feed가 비었으면 spinner를 기본 상태로 되돌린다.
-    syncSpinnerVerbs(config, messages);
-
-    // spinner는 실제 노출 시점을 알 수 없으므로, spinner pool에 실린 시점을
-    // "전달(DELIVERED)"로 기록한다. 메시지당 설치 1회만.
-    if (config.adapters.claude && config.installations.CLAUDE) {
-      const state = loadState();
-      state.delivered ??= {};
-      let changed = false;
-      for (const m of messages) {
-        if (state.delivered[m.id]) continue;
-        appendEvent({ agentType: "CLAUDE", type: "DELIVERED", messageId: m.id });
-        state.delivered[m.id] = 1;
-        changed = true;
-      }
-      if (changed) saveState(state);
+    // spinner 회전과 DELIVERED/QUALIFIED 기록은 statusline이 담당한다 (pool=1).
+    // 여기서는 armed된 메시지가 서버에서 사라진 경우만 즉시 정리한다.
+    const state = loadState();
+    const current = state.current;
+    if (current && !messages.some((m) => m.id === current.messageId)) {
+      armSpinnerMessage(config, messages[0] ?? null);
+      state.current = undefined; // 다음 statusline tick이 정식으로 다음 메시지를 armed한다
+      saveState(state);
     }
   }
 

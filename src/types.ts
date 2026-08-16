@@ -27,16 +27,21 @@ export interface QueuedEvent {
 }
 
 export interface RuntimeState {
+  /** 현재 spinner에 armed된 메시지 (pool=1 회전) */
   current?: {
     messageId: string;
     text: string;
     author: string;
     shownAt: number; // epoch ms
+    /** 이 메시지가 armed된 동안 spinner가 실제로 돈 시간(ms) — cost 델타로 측정 */
+    visibleMs?: number;
   };
   /** messageId -> 노출 횟수 (seen penalty) */
   seen: Record<string, number>;
-  /** spinner에 실려 DELIVERED 이벤트를 이미 보낸 messageId 집합 */
+  /** DELIVERED 이벤트를 이미 보낸 messageId 집합 */
   delivered?: Record<string, number>;
+  /** session_id -> 마지막으로 본 cost.total_api_duration_ms (spinner 활동 감지용) */
+  sessions?: Record<string, number>;
   lastTickAt?: number;
   lastFlushAt?: number;
   lastRefreshAt?: number;
