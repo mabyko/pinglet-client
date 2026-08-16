@@ -32,14 +32,14 @@ export function formatMyReach(stats: {
   // 활성 설치 수를 모르면(구서버/구캐시) 도달 수만 표시한다.
   const coverage =
     active > 0
-      ? `${reached}/${active} 터미널 도달 (${Math.round((reached / active) * 100)}%)`
+      ? `도달률 ${Math.round((reached / active) * 100)}%`
       : `터미널 ${reached}곳 도달`;
   if (supportsUnicode()) {
     return `💌 내 Ping "${text}" → ${coverage}`;
   }
   const asciiCoverage =
     active > 0
-      ? `reached ${reached}/${active} terminals (${Math.round((reached / active) * 100)}%)`
+      ? `reach ${Math.round((reached / active) * 100)}%`
       : `reached ${reached} terminals`;
   return `[ping] "${text}" -> ${asciiCoverage}`;
 }
