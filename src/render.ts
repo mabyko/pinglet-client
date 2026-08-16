@@ -19,27 +19,27 @@ export function formatPing(message: FeedMessage): string {
 
 const REACH_TEXT_MAX = 24;
 
-/** statusline용: 내가 쓴 최근 메시지의 도달 현황 한 줄. */
+/** statusline용: 내가 쓴 최근 메시지의 도달 현황 한 줄 (커버리지 = 도달/활성 설치). */
 export function formatMyReach(stats: {
   text: string;
   reachedInstallations: number;
-  delivered: number;
-  qualifiedImpressions: number;
+  activeInstallations?: number;
 }): string {
   let text = stats.text;
   if (text.length > REACH_TEXT_MAX) text = text.slice(0, REACH_TEXT_MAX - 1) + "…";
-  const rate =
-    stats.delivered > 0
-      ? ((stats.qualifiedImpressions / stats.delivered) * 100).toFixed(1) + "%"
-      : null;
+  const reached = stats.reachedInstallations;
+  const active = stats.activeInstallations ?? 0;
+  // 활성 설치 수를 모르면(구서버/구캐시) 도달 수만 표시한다.
+  const coverage =
+    active > 0
+      ? `${reached}/${active} 터미널 도달 (${Math.round((reached / active) * 100)}%)`
+      : `터미널 ${reached}곳 도달`;
   if (supportsUnicode()) {
-    return (
-      `💌 내 Ping "${text}" → ${stats.reachedInstallations}곳 도달` +
-      (rate ? ` · 유효 노출률 ${rate}` : "")
-    );
+    return `💌 내 Ping "${text}" → ${coverage}`;
   }
-  return (
-    `[ping] "${text}" -> reached ${stats.reachedInstallations}` +
-    (rate ? `, qualified ${rate}` : "")
-  );
+  const asciiCoverage =
+    active > 0
+      ? `reached ${reached}/${active} terminals (${Math.round((reached / active) * 100)}%)`
+      : `reached ${reached} terminals`;
+  return `[ping] "${text}" -> ${asciiCoverage}`;
 }

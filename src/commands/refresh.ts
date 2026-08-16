@@ -74,6 +74,7 @@ export async function runRefresh(): Promise<void> {
         messageId: latest.id,
         text: latest.text,
         reachedInstallations: stats.reachedInstallations,
+        activeInstallations: stats.activeInstallations,
         delivered: stats.delivered,
         qualifiedImpressions: stats.qualifiedImpressions,
         reactions: stats.reactions,

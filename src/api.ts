@@ -135,6 +135,8 @@ export interface MessageStats {
   qualifiedRate: number;
   reactions: number;
   reachedInstallations: number;
+  /** 최근 7일 활성 설치 수 — 커버리지 분모 (구서버는 미포함) */
+  activeInstallations?: number;
 }
 
 /** GET /messages/:id/stats — 내가 쓴 메시지의 도달 통계 (익명 작성자는 설치 토큰으로). */

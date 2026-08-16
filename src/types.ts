@@ -54,6 +54,8 @@ export interface MyStatsCache {
   messageId: string;
   text: string;
   reachedInstallations: number;
+  /** 최근 7일 활성 설치 수 (커버리지 분모) */
+  activeInstallations?: number;
   delivered: number;
   qualifiedImpressions: number;
   reactions: number;
