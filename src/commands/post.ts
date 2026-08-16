@@ -1,5 +1,6 @@
 import { loadConfig } from "../config";
 import { createMessage } from "../api";
+import { saveMyPost } from "../cache";
 
 const REASON_LABELS: Record<string, string> = {
   EMPTY: "빈 메시지는 등록할 수 없습니다",
@@ -55,6 +56,11 @@ export async function runPost(args: string[]): Promise<void> {
     }
     process.exitCode = 1;
     return;
+  }
+
+  // statusline 도달 표시용으로 이 기기에서 쓴 메시지를 기록해 둔다.
+  if (result.id && result.status !== "REJECTED") {
+    saveMyPost({ id: result.id, text, postedAt: new Date().toISOString() });
   }
 
   const reason = result.moderationReason

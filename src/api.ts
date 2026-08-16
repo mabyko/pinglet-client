@@ -128,6 +128,28 @@ export async function sendHeartbeat(
   });
 }
 
+export interface MessageStats {
+  messageId: string;
+  delivered: number;
+  qualifiedImpressions: number;
+  qualifiedRate: number;
+  reactions: number;
+  reachedInstallations: number;
+}
+
+/** GET /messages/:id/stats — 내가 쓴 메시지의 도달 통계 (익명 작성자는 설치 토큰으로). */
+export async function fetchMessageStats(
+  config: PingletConfig,
+  messageId: string,
+): Promise<MessageStats | null> {
+  const token =
+    config.userToken ?? Object.values(config.installations)[0]?.token;
+  if (!token) return null;
+  return request<MessageStats>(config, "GET", `/messages/${messageId}/stats`, {
+    token,
+  });
+}
+
 export interface CreateMessageResult {
   ok: boolean;
   id?: string;

@@ -35,9 +35,29 @@ export interface RuntimeState {
   };
   /** messageId -> 노출 횟수 (seen penalty) */
   seen: Record<string, number>;
+  /** spinner에 실려 DELIVERED 이벤트를 이미 보낸 messageId 집합 */
+  delivered?: Record<string, number>;
   lastTickAt?: number;
   lastFlushAt?: number;
   lastRefreshAt?: number;
+}
+
+/** posts.json 항목 — 이 기기에서 작성한 메시지. */
+export interface MyPostRecord {
+  id: string;
+  text: string;
+  postedAt: string;
+}
+
+/** mystats.json — 최근 작성 메시지의 도달 통계 캐시. */
+export interface MyStatsCache {
+  messageId: string;
+  text: string;
+  reachedInstallations: number;
+  delivered: number;
+  qualifiedImpressions: number;
+  reactions: number;
+  updatedAt: string;
 }
 
 export interface InstallRecord {

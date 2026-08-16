@@ -1,10 +1,18 @@
 import {
   FEED_PATH,
+  MYSTATS_PATH,
+  POSTS_PATH,
   STATE_PATH,
   readJsonFile,
   writeJsonFile,
 } from "./config";
-import { FeedCacheFile, FeedMessage, RuntimeState } from "./types";
+import {
+  FeedCacheFile,
+  FeedMessage,
+  MyPostRecord,
+  MyStatsCache,
+  RuntimeState,
+} from "./types";
 
 /**
  * 렌더링 path에서 호출되므로 전부 동기 I/O — 네트워크는 절대 타지 않는다.
@@ -41,12 +49,36 @@ export function loadState(): RuntimeState {
   return { seen: {} };
 }
 
+export function loadMyPosts(): MyPostRecord[] {
+  return readJsonFile<MyPostRecord[]>(POSTS_PATH) ?? [];
+}
+
+export function saveMyPost(post: MyPostRecord): void {
+  const posts = [post, ...loadMyPosts()].slice(0, 20);
+  writeJsonFile(POSTS_PATH, posts);
+}
+
+export function loadMyStats(): MyStatsCache | null {
+  return readJsonFile<MyStatsCache>(MYSTATS_PATH);
+}
+
+export function saveMyStats(stats: MyStatsCache): void {
+  writeJsonFile(MYSTATS_PATH, stats);
+}
+
 export function saveState(state: RuntimeState): void {
-  // seen map이 무한히 자라지 않게 상한을 둔다.
+  // seen/delivered map이 무한히 자라지 않게 상한을 둔다.
   const keys = Object.keys(state.seen);
   if (keys.length > 500) {
     for (const key of keys.slice(0, keys.length - 500)) {
       delete state.seen[key];
+    }
+  }
+  const delivered = state.delivered ?? {};
+  const deliveredKeys = Object.keys(delivered);
+  if (deliveredKeys.length > 2000) {
+    for (const key of deliveredKeys.slice(0, deliveredKeys.length - 2000)) {
+      delete delivered[key];
     }
   }
   writeJsonFile(STATE_PATH, state);
