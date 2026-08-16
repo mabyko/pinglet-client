@@ -3,7 +3,17 @@ import * as os from "os";
 import * as path from "path";
 import { AgentType, InstallRecord } from "./types";
 
-export const VERSION = "0.1.0";
+/** package.json의 version — 하드코딩하면 npm version bump와 어긋난다. */
+export const VERSION: string = (() => {
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+    ) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
 
 export const PINGLET_DIR = path.join(os.homedir(), ".pinglet");
 export const CONFIG_PATH = path.join(PINGLET_DIR, "config.json");
