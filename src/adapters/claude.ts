@@ -126,19 +126,50 @@ const MAX_VERBS = 30;
 const MAX_VERB_LEN = 60;
 
 function readSettings(): ClaudeSettings {
+  return readSettingsWithMtime().settings;
+}
+
+function settingsMtimeMs(): number | null {
   try {
-    return JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8")) as ClaudeSettings;
+    return fs.statSync(SETTINGS_PATH).mtimeMs;
   } catch {
-    return {};
+    return null; // 파일 없음
   }
 }
 
-function writeSettings(settings: ClaudeSettings): void {
+function readSettingsWithMtime(): {
+  settings: ClaudeSettings;
+  mtimeMs: number | null;
+} {
+  const mtimeMs = settingsMtimeMs();
+  try {
+    return {
+      settings: JSON.parse(
+        fs.readFileSync(SETTINGS_PATH, "utf8"),
+      ) as ClaudeSettings,
+      mtimeMs,
+    };
+  } catch {
+    return { settings: {}, mtimeMs };
+  }
+}
+
+/**
+ * mtime이 읽던 시점 그대로일 때만 쓴다 — 변경이 감지되면 false를 돌려주고
+ * 호출부가 다시 읽어 재적용한다. Claude Code 자신도 이 파일을 쓰기 때문에,
+ * 그 사이의 변경을 우리 스냅샷으로 덮어써 사용자 설정을 유실하면 안 된다.
+ */
+function writeSettings(
+  settings: ClaudeSettings,
+  expectedMtimeMs: number | null,
+): boolean {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
+  if (settingsMtimeMs() !== expectedMtimeMs) return false;
   // settings.json은 Claude Code가 수시로 읽는 파일이라 tmp+rename으로 원자적으로 쓴다.
   const tmp = SETTINGS_PATH + ".pinglet-tmp";
   fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + "\n");
   fs.renameSync(tmp, SETTINGS_PATH);
+  return true;
 }
 
 function isPingletTip(tip: string): boolean {
@@ -197,52 +228,62 @@ export function armSpinnerMessage(
   const adapter = config.adapters.claude;
   if (!adapter) return false;
 
-  const settings = readSettings();
-  cleanupSpinnerTips(settings, config);
+  // 읽기~쓰기 사이에 다른 프로세스(Claude Code 등)가 파일을 바꿨으면
+  // writeSettings가 거부하므로, 다시 읽어 재적용한다.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { settings, mtimeMs } = readSettingsWithMtime();
+    cleanupSpinnerTips(settings, config);
 
-  const existing = settings.spinnerVerbs;
-  const existingVerbs = existing?.verbs ?? [];
+    const existing = settings.spinnerVerbs;
+    const existingVerbs = existing?.verbs ?? [];
 
-  // 사용자가 원래 갖고 있던 spinnerVerbs는 최초 1회 백업해 두고 uninstall 시 복원한다.
-  const isOurs = existingVerbs.some(isPingletTip);
-  if (existing && !isOurs && adapter.spinnerVerbsBackup === undefined) {
-    adapter.spinnerVerbsBackup = existing;
-    saveConfig(config);
-  }
-
-  const userVerbs = existingVerbs.filter((verb) => !isPingletTip(verb));
-  const pingletVerbs = message ? buildPingletVerbs([message]) : [];
-
-  // armed할 메시지가 없으면 spinner를 기본 상태로 되돌린다.
-  if (pingletVerbs.length === 0) {
-    if (!isOurs) return false;
-    const backup = adapter.spinnerVerbsBackup;
-    if (backup) {
-      settings.spinnerVerbs = backup as SpinnerVerbs;
-      delete adapter.spinnerVerbsBackup;
+    // 사용자가 원래 갖고 있던 spinnerVerbs는 최초 1회 백업해 두고 uninstall 시 복원한다.
+    const isOurs = existingVerbs.some(isPingletTip);
+    if (existing && !isOurs && adapter.spinnerVerbsBackup === undefined) {
+      adapter.spinnerVerbsBackup = existing;
       saveConfig(config);
-    } else if (userVerbs.length > 0) {
-      settings.spinnerVerbs = { ...existing!, verbs: userVerbs };
-    } else {
-      delete settings.spinnerVerbs;
     }
-    writeSettings(settings);
-    return false;
-  }
 
-  const next = [...userVerbs, ...pingletVerbs];
-  // 같은 메시지를 다시 armed하는 경우 파일 쓰기를 생략한다 (300ms 렌더링 경로 보호).
-  if (
-    existing?.mode === "replace" &&
-    existingVerbs.length === next.length &&
-    existingVerbs.every((v, i) => v === next[i])
-  ) {
-    return true;
-  }
+    const userVerbs = existingVerbs.filter((verb) => !isPingletTip(verb));
+    const pingletVerbs = message ? buildPingletVerbs([message]) : [];
 
-  settings.spinnerVerbs = { mode: "replace", verbs: next };
-  writeSettings(settings);
-  return true;
+    // armed할 메시지가 없으면 spinner를 기본 상태로 되돌린다.
+    if (pingletVerbs.length === 0) {
+      if (!isOurs) return false;
+      const backup = adapter.spinnerVerbsBackup;
+      if (backup) {
+        settings.spinnerVerbs = backup as SpinnerVerbs;
+      } else if (userVerbs.length > 0) {
+        settings.spinnerVerbs = { ...existing!, verbs: userVerbs };
+      } else {
+        delete settings.spinnerVerbs;
+      }
+      if (writeSettings(settings, mtimeMs)) {
+        // 쓰기가 확정된 뒤에만 백업을 소비한다 (실패 시 백업 유실 방지).
+        if (backup) {
+          delete adapter.spinnerVerbsBackup;
+          saveConfig(config);
+        }
+        return false;
+      }
+      continue;
+    }
+
+    const next = [...userVerbs, ...pingletVerbs];
+    // 같은 메시지를 다시 armed하는 경우 파일 쓰기를 생략한다 (300ms 렌더링 경로 보호).
+    if (
+      existing?.mode === "replace" &&
+      existingVerbs.length === next.length &&
+      existingVerbs.every((v, i) => v === next[i])
+    ) {
+      return true;
+    }
+
+    settings.spinnerVerbs = { mode: "replace", verbs: next };
+    if (writeSettings(settings, mtimeMs)) return true;
+  }
+  // 계속 충돌하면 이번 tick은 건너뛴다 — 다음 statusline tick에서 재시도된다.
+  return false;
 }
 
 /** doctor용: spinner verb로 등록된 Pinglet 메시지 개수. */
@@ -261,84 +302,93 @@ export function installClaudeIntegration(
   config: PingletConfig,
   options: { force?: boolean } = {},
 ): { ok: boolean; reason?: string } {
-  const settings = readSettings();
-  const existing = settings.statusLine;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { settings, mtimeMs } = readSettingsWithMtime();
+    const existing = settings.statusLine;
 
-  const isOurs = existing?.command?.includes("pinglet");
-  if (existing && !isOurs && !options.force) {
-    return {
-      ok: false,
-      reason:
-        "기존 statusLine 설정이 있습니다. 덮어쓰려면 --force로 다시 실행하세요.",
+    const isOurs = existing?.command?.includes("pinglet");
+    if (existing && !isOurs && !options.force) {
+      return {
+        ok: false,
+        reason:
+          "기존 statusLine 설정이 있습니다. 덮어쓰려면 --force로 다시 실행하세요.",
+      };
+    }
+
+    config.adapters.claude = {
+      // 재설치 시 기존 백업(spinnerVerbsBackup 등)이 날아가지 않게 유지한다.
+      ...config.adapters.claude,
+      installedAt: new Date().toISOString(),
+      settingsPath: SETTINGS_PATH,
+      // 사용자의 기존 설정은 백업해 두고 uninstall 시 복원한다.
+      ...(existing && !isOurs && { statusLineBackup: existing }),
     };
+    saveConfig(config);
+
+    settings.statusLine = { type: "command", command: statusLineCommand() };
+    uninstallPromptHook(settings); // 구버전 hook 방식 흔적 정리
+    if (!writeSettings(settings, mtimeMs)) continue; // 다른 프로세스와 충돌 → 재읽기
+    installSlashCommand();
+
+    // spinner verb는 로컬 캐시에 실제 feed가 있을 때만 채운다. 없으면 기본 spinner 유지.
+    armSpinnerMessage(config, loadFeedMessages()[0] ?? null);
+    return { ok: true };
   }
-
-  config.adapters.claude = {
-    // 재설치 시 기존 백업(spinnerVerbsBackup 등)이 날아가지 않게 유지한다.
-    ...config.adapters.claude,
-    installedAt: new Date().toISOString(),
-    settingsPath: SETTINGS_PATH,
-    // 사용자의 기존 설정은 백업해 두고 uninstall 시 복원한다.
-    ...(existing && !isOurs && { statusLineBackup: existing }),
+  return {
+    ok: false,
+    reason:
+      "settings.json이 계속 변경되고 있어 설치하지 못했습니다. 잠시 후 다시 시도하세요.",
   };
-  saveConfig(config);
-
-  settings.statusLine = { type: "command", command: statusLineCommand() };
-  uninstallPromptHook(settings); // 구버전 hook 방식 흔적 정리
-  writeSettings(settings);
-  installSlashCommand();
-
-  // spinner verb는 로컬 캐시에 실제 feed가 있을 때만 채운다. 없으면 기본 spinner 유지.
-  armSpinnerMessage(config, loadFeedMessages()[0] ?? null);
-  return { ok: true };
 }
 
 export function uninstallClaudeIntegration(config: PingletConfig): boolean {
-  const settings = readSettings();
-  let changed = false;
+  let settingsChanged = false;
 
-  if (settings.statusLine?.command?.includes("pinglet")) {
-    const backup = config.adapters.claude?.statusLineBackup;
-    if (backup) {
-      settings.statusLine = backup as ClaudeSettings["statusLine"];
-    } else {
-      delete settings.statusLine;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { settings, mtimeMs } = readSettingsWithMtime();
+    settingsChanged = false;
+
+    if (settings.statusLine?.command?.includes("pinglet")) {
+      const backup = config.adapters.claude?.statusLineBackup;
+      if (backup) {
+        settings.statusLine = backup as ClaudeSettings["statusLine"];
+      } else {
+        delete settings.statusLine;
+      }
+      settingsChanged = true;
     }
-    changed = true;
-  }
 
-  if (cleanupSpinnerTips(settings, config)) {
-    changed = true;
-  }
-
-  if (uninstallPromptHook(settings)) {
-    changed = true;
-  }
-
-  if (uninstallSlashCommand()) {
-    changed = true;
-  }
-
-  const verbs = settings.spinnerVerbs;
-  if (verbs?.verbs?.some(isPingletTip)) {
-    const verbsBackup = config.adapters.claude?.spinnerVerbsBackup;
-    const userVerbs = verbs.verbs.filter((verb) => !isPingletTip(verb));
-    if (verbsBackup) {
-      settings.spinnerVerbs = verbsBackup as SpinnerVerbs;
-    } else if (userVerbs.length > 0) {
-      settings.spinnerVerbs = { ...verbs, verbs: userVerbs };
-    } else {
-      delete settings.spinnerVerbs;
+    if (cleanupSpinnerTips(settings, config)) {
+      settingsChanged = true;
     }
-    changed = true;
+
+    if (uninstallPromptHook(settings)) {
+      settingsChanged = true;
+    }
+
+    const verbs = settings.spinnerVerbs;
+    if (verbs?.verbs?.some(isPingletTip)) {
+      const verbsBackup = config.adapters.claude?.spinnerVerbsBackup;
+      const userVerbs = verbs.verbs.filter((verb) => !isPingletTip(verb));
+      if (verbsBackup) {
+        settings.spinnerVerbs = verbsBackup as SpinnerVerbs;
+      } else if (userVerbs.length > 0) {
+        settings.spinnerVerbs = { ...verbs, verbs: userVerbs };
+      } else {
+        delete settings.spinnerVerbs;
+      }
+      settingsChanged = true;
+    }
+
+    if (!settingsChanged) break;
+    if (writeSettings(settings, mtimeMs)) break; // 충돌 시 재읽기 후 재적용
   }
 
-  if (changed) {
-    writeSettings(settings);
-  }
+  const commandRemoved = uninstallSlashCommand();
+
   if (config.adapters.claude) {
     delete config.adapters.claude;
     saveConfig(config);
   }
-  return changed;
+  return settingsChanged || commandRemoved;
 }

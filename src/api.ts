@@ -158,21 +158,20 @@ export interface CreateMessageResult {
   status?: "APPROVED" | "PENDING_REVIEW" | "REJECTED";
   moderationReason?: string;
   /** 실패 시 CLI에 보여줄 사유 구분 */
-  error?: "UNAUTHORIZED" | "RATE_LIMITED" | "NETWORK" | "SERVER";
+  error?: "LOGIN_REQUIRED" | "UNAUTHORIZED" | "RATE_LIMITED" | "NETWORK" | "SERVER";
 }
 
 /**
  * POST /messages — 메시지 작성 (분당 5개 제한).
- * 로그인했으면 유저 토큰으로(닉네임 표시), 아니면 설치 토큰으로 익명 작성한다.
+ * 작성은 GitHub 로그인이 필요하다 (읽기는 계속 익명).
  */
 export async function createMessage(
   config: PingletConfig,
   text: string,
   category?: string,
 ): Promise<CreateMessageResult> {
-  const token =
-    config.userToken ?? Object.values(config.installations)[0]?.token;
-  if (!token) return { ok: false, error: "UNAUTHORIZED" };
+  const token = config.userToken;
+  if (!token) return { ok: false, error: "LOGIN_REQUIRED" };
   try {
     const res = await fetch(config.apiBaseUrl + "/messages", {
       method: "POST",
@@ -202,17 +201,20 @@ export async function createMessage(
   }
 }
 
-/** POST /installations/link — 로그인 후 기존 익명 설치를 계정에 연결한다. */
+/**
+ * POST /installations/link — 로그인 후 기존 익명 설치를 계정에 연결한다.
+ * 소유 증명으로 installation "토큰"을 보낸다 (ID만으로는 연결 불가).
+ */
 export async function linkInstallation(
   config: PingletConfig,
-  installationId: string,
+  installationToken: string,
 ): Promise<boolean> {
   if (!config.userToken) return false;
   const res = await request<{ linked: boolean }>(
     config,
     "POST",
     "/installations/link",
-    { token: config.userToken, body: { installationId } },
+    { token: config.userToken, body: { installationToken } },
   );
   return res?.linked === true;
 }

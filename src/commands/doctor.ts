@@ -74,6 +74,6 @@ export async function runDoctor(): Promise<void> {
   else warn(`API unreachable (${config.apiBaseUrl}) — 오프라인 모드로 동작 중`);
 
   if (config.userToken) ok("로그인됨");
-  else warn("로그인 안 됨 — 익명 작성은 가능, 닉네임 표시/반응은 `pinglet login` 후");
+  else warn("로그인 안 됨 — 읽기는 가능, 메시지 작성/반응은 `pinglet login` 후");
   console.log("");
 }

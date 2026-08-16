@@ -41,7 +41,7 @@ codex    # turn 완료 시 macOS 알림으로 Ping 전달 (experimental)
 | `pinglet install [--api <url>] [--force]` | Claude Code / Codex 자동 감지 후 integration 설치 + 서버 등록 + 초기 feed 캐시 |
 | `pinglet uninstall [--purge]` | integration 제거, 기존 설정 복원. `--purge`는 `~/.pinglet`까지 삭제 |
 | `pinglet login [--token <jwt>]` | GitHub 로그인 후 익명 설치를 계정에 연결 |
-| `pinglet post "메시지" [--category <c>]` | 메시지 작성 (설치만 해도 익명 작성 가능, 로그인 시 닉네임 표시) |
+| `pinglet post "메시지" [--category <c>]` | 메시지 작성 (GitHub 로그인 필요, 읽기는 로그인 없이 가능) |
 | `pinglet doctor` | 설치/캐시/큐/서버 상태 진단 |
 | `pinglet ping` | 메시지 미리보기 (이벤트 기록 없음) |
 

@@ -90,6 +90,6 @@ export async function runInstall(args: string[]): Promise<void> {
 
   console.log("\n설치 완료! 평소처럼 claude 또는 codex를 실행하면 Ping이 표시됩니다.");
   console.log("  상태 확인:   pinglet doctor");
-  console.log('  메시지 작성: pinglet post "메시지"  (익명 — 바로 가능)');
-  console.log("  계정 연결:   pinglet login  (선택 — 닉네임 표시/반응에 필요)");
+  console.log('  메시지 작성: pinglet login 후 pinglet post "메시지"');
+  console.log("  계정 연결:   pinglet login  (메시지 작성/반응에 필요)");
 }

@@ -54,7 +54,7 @@ export async function runLogin(args: string[]): Promise<void> {
   console.log("✓ 로그인 정보 저장 완료");
 
   for (const [agentType, record] of Object.entries(config.installations)) {
-    const linked = await linkInstallation(config, record.installationId);
+    const linked = await linkInstallation(config, record.token);
     console.log(
       linked
         ? `✓ ${agentType} installation을 계정에 연결했습니다`

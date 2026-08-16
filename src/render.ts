@@ -8,13 +8,26 @@ export function supportsUnicode(): boolean {
   return /utf-?8/i.test(locale);
 }
 
+/**
+ * 터미널에 그리기 전 최종 방어선: 제어·서식 문자를 제거한다.
+ * 서버 moderation이 이미 거르지만, 구버전 서버·손상된 캐시를 신뢰하지 않는다
+ * (ANSI escape가 살아 있으면 수신자 터미널을 조작할 수 있다).
+ */
+export function sanitizeForTerminal(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .trim();
+}
+
 /** 작성자 닉네임 없이 메시지만 표시한다 (spinner verb용). */
 export function formatPing(message: FeedMessage): string {
   const sponsored = message.contentType === "SPONSORED" ? "[AD] " : "";
+  const text = sanitizeForTerminal(message.text);
   if (supportsUnicode()) {
-    return `💌 ${sponsored}"${message.text}"`;
+    return `💌 ${sponsored}"${text}"`;
   }
-  return `[ping] ${sponsored}"${message.text}"`;
+  return `[ping] ${sponsored}"${text}"`;
 }
 
 const REACH_TEXT_MAX = 24;
@@ -25,7 +38,7 @@ export function formatMyReach(stats: {
   reachedInstallations: number;
   activeInstallations?: number;
 }): string {
-  let text = stats.text;
+  let text = sanitizeForTerminal(stats.text);
   if (text.length > REACH_TEXT_MAX) text = text.slice(0, REACH_TEXT_MAX - 1) + "…";
   const reached = stats.reachedInstallations;
   const active = stats.activeInstallations ?? 0;

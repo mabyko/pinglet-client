@@ -8,6 +8,7 @@ const REASON_LABELS: Record<string, string> = {
   URL_NOT_ALLOWED: "URL은 허용되지 않습니다",
   PII_DETECTED: "이메일/전화번호 등 개인정보가 포함되어 있습니다",
   BANNED_WORD: "정책상 검토가 필요한 표현이 포함되어 있습니다",
+  CONTROL_CHARS: "제어 문자(escape sequence)는 허용되지 않습니다",
 };
 
 /**
@@ -40,9 +41,14 @@ export async function runPost(args: string[]): Promise<void> {
 
   if (!result.ok) {
     switch (result.error) {
+      case "LOGIN_REQUIRED":
+        console.log(
+          "✗ 메시지 작성에는 GitHub 로그인이 필요합니다. `pinglet login`을 실행하세요 (읽기는 로그인 없이 가능).",
+        );
+        break;
       case "UNAUTHORIZED":
         console.log(
-          "✗ 인증 정보가 없습니다. 먼저 `pinglet install`을 실행하세요 (로그인 없이도 익명 작성 가능).",
+          "✗ 로그인이 만료됐습니다. `pinglet login`으로 다시 로그인하세요.",
         );
         break;
       case "RATE_LIMITED":
@@ -72,11 +78,6 @@ export async function runPost(args: string[]): Promise<void> {
       console.log("✓ 메시지가 등록됐습니다. 곧 다른 개발자들의 터미널에 표시됩니다.");
       if (!quiet) {
         console.log(`  id: ${result.id}`);
-        if (!config.userToken) {
-          console.log(
-            "  '익명의 개발자'로 표시됩니다 — 닉네임을 달려면 `pinglet login`",
-          );
-        }
       }
       break;
     case "PENDING_REVIEW":
