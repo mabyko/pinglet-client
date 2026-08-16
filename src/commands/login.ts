@@ -31,7 +31,10 @@ export async function runLogin(args: string[]): Promise<void> {
 
   if (!token) {
     const url = `${config.apiBaseUrl}/auth/github`;
-    console.log("\n브라우저에서 GitHub 로그인 후, 응답 JSON의 token 값을 붙여넣어 주세요.");
+    console.log(
+      `\n로그인하면 이용약관(${config.apiBaseUrl}/terms)과 개인정보처리방침(${config.apiBaseUrl}/privacy)에 동의하는 것으로 간주됩니다.`,
+    );
+    console.log("브라우저에서 GitHub 로그인 후, 응답 JSON의 token 값을 붙여넣어 주세요.");
     console.log(`  ${url}\n`);
     if (process.platform === "darwin") {
       try {

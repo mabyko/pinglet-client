@@ -114,3 +114,14 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   state.json     # 현재 표시 중 메시지, seen 카운트, flush/refresh 타이밍
   events.jsonl   # Local Event Queue (append-only)
 ```
+
+## 약관 및 개인정보처리방침
+
+Pinglet은 GitHub 계정 정보(로그인 시), 설치 환경 정보, 접속 IP를 서비스 제공·어뷰징
+방지 목적으로 처리합니다. 로그인하여 메시지를 작성하면 아래 문서에 동의한 것으로
+간주됩니다.
+
+- [이용약관](https://pinglet.halluci.co.kr/terms)
+- [개인정보처리방침](https://pinglet.halluci.co.kr/privacy)
+
+문의: leeyeonggyun@naver.com
