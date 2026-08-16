@@ -23,11 +23,23 @@ const REACH_TEXT_MAX = 24;
 export function formatMyReach(stats: {
   text: string;
   reachedInstallations: number;
+  delivered: number;
+  qualifiedImpressions: number;
 }): string {
   let text = stats.text;
   if (text.length > REACH_TEXT_MAX) text = text.slice(0, REACH_TEXT_MAX - 1) + "…";
+  const rate =
+    stats.delivered > 0
+      ? ((stats.qualifiedImpressions / stats.delivered) * 100).toFixed(1) + "%"
+      : null;
   if (supportsUnicode()) {
-    return `💌 내 Ping "${text}" → 터미널 ${stats.reachedInstallations}곳 도달`;
+    return (
+      `💌 내 Ping "${text}" → ${stats.reachedInstallations}곳 도달` +
+      (rate ? ` · 유효 노출률 ${rate}` : "")
+    );
   }
-  return `[ping] "${text}" -> reached ${stats.reachedInstallations} terminals`;
+  return (
+    `[ping] "${text}" -> reached ${stats.reachedInstallations}` +
+    (rate ? `, qualified ${rate}` : "")
+  );
 }
