@@ -9,7 +9,7 @@ export const ROTATE_MS = 30_000; // 메시지 교체 주기
 export const QUALIFIED_MS = 3_000; // 정책상 최소 노출 시간 (아키텍처 §7.2)
 export const FLUSH_INTERVAL_MS = 60_000; // batch 전송 주기
 export const FLUSH_COUNT = 20; // 또는 이벤트 개수 기준
-export const FEED_TTL_MS = 30 * 60_000; // feed 캐시 갱신 주기
+export const FEED_TTL_MS = 5 * 60_000; // feed 캐시 갱신 주기
 
 /** 구버전 시드 메시지 id는 서버에 존재하지 않으므로 이벤트를 만들지 않는다. */
 function isServerMessage(messageId: string): boolean {
@@ -90,10 +90,11 @@ export function runMaintenance(state: RuntimeState, now: number): void {
   }
 
   const age = feedAgeMs();
+  // 뒤 조건은 오프라인 시 재시도 폭주 방지용 스로틀 — TTL보다 짧아야 주기가 밀리지 않는다.
   const refreshDue =
     (age === null || age >= FEED_TTL_MS) &&
     (state.lastRefreshAt === undefined ||
-      now - state.lastRefreshAt >= 5 * 60_000);
+      now - state.lastRefreshAt >= 2 * 60_000);
   if (refreshDue) {
     state.lastRefreshAt = now;
     spawnDetachedCommand(["refresh"]);
