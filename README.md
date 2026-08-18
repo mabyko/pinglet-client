@@ -12,8 +12,7 @@ Claude Code가 코드를 고치는 동안 "Befuddling…" 스피너만 바라보
 ## 시작하기
 
 ```bash
-npm install -g pinglet-cli
-pinglet install
+npm install -g pinglet-cli && pinglet install
 ```
 
 이게 전부입니다. 이후는 평소처럼 `claude`를 실행하기만 하면 돼요.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { VERSION } from "./config";
+import { VERSION, loadConfig } from "./config";
 import { runInstall } from "./commands/install";
 import { runUninstall } from "./commands/uninstall";
 import { runDoctor } from "./commands/doctor";
@@ -69,6 +69,16 @@ async function main(): Promise<void> {
       console.log(VERSION);
       break;
     default:
+      // 최신 npm은 postinstall을 차단하므로, 설정 전 상태에서 bare `pinglet`을
+      // 치면 help 대신 바로 첫 설정을 시작한다 (막다른 길 제거).
+      if (!command) {
+        const config = loadConfig();
+        if (!config.adapters.claude && !config.adapters.codex) {
+          console.log("pinglet: 아직 설정 전입니다 — 첫 설정을 시작합니다.");
+          await runInstall([]);
+          break;
+        }
+      }
       console.log(HELP);
       if (command && command !== "help" && command !== "--help") {
         process.exitCode = 1;
