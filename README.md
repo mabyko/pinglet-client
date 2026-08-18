@@ -82,4 +82,4 @@ npm uninstall -g pinglet-cli
 
 - [이용약관](https://pinglet.halluci.co.kr/terms) · [개인정보처리방침](https://pinglet.halluci.co.kr/privacy)
 
-문의·피드백: leeyeonggyun@naver.com · [GitHub Issues](https://github.com/mabyko/pinglet-client/issues)
+문의·피드백: halluci-data@naver.com · [GitHub Issues](https://github.com/mabyko/pinglet-client/issues)
