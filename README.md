@@ -13,10 +13,14 @@ Claude Code가 코드를 고치는 동안 "Befuddling…" 스피너만 바라보
 
 ```bash
 npm install -g pinglet-cli
+pinglet install
 ```
 
-설치가 끝나면 자동으로 Claude Code에 연결됩니다. 이후는 평소처럼 `claude`를
-실행하기만 하면 돼요. 자동 설정이 안 됐다면 `pinglet install` 한 번이면 됩니다.
+이게 전부입니다. 이후는 평소처럼 `claude`를 실행하기만 하면 돼요.
+
+> 설치 중 npm이 `install-scripts` 경고를 보여줄 수 있습니다 — 구버전 npm에서
+> 초기 설정을 자동화하던 스크립트에 대한 안내로, 무시해도 됩니다.
+> 연결 상태는 `pinglet doctor`로 언제든 확인할 수 있어요.
 
 - 기존 statusline 설정이 있다면 **백업 후 교체할지 물어보고**, 제거 시 원래대로 복원합니다.
 - Codex도 지원합니다(experimental) — turn 완료 시 macOS 알림으로 Ping이 도착합니다.
