@@ -1,127 +1,85 @@
-# Pinglet Client
+# Pinglet 💌
 
-AI가 생각하는 동안 다른 개발자의 Ping을 만나는 메시지 네트워크 — 로컬 런타임(CLI).
+**AI가 생각하는 동안, 다른 개발자의 한 줄을 만나세요.**
 
-`pinglet-backend`(NestJS)와 연동되며, 한 번 설치하면 평소처럼 `claude` / `codex`를
-실행하기만 해도 대기 구간에 다른 개발자의 짧은 메시지가 표시된다.
+Claude Code가 코드를 고치는 동안 "Befuddling…" 스피너만 바라보던 그 자리에,
+다른 개발자들이 남긴 짧은 메시지(**Ping**)가 대신 표시됩니다.
 
-## 설치 및 사용
-
-```bash
-npm install -g pinglet-cli   # 설치 후 명령어는 `pinglet`
+```
+✶ 💌 "금요일 오후 배포는 다음 생에 합시다." (12s · ↓ 1.2k tokens)
 ```
 
-npm 글로벌 설치 시 postinstall이 `pinglet install`까지 자동 수행한다.
-(pnpm/bun처럼 postinstall을 차단하는 매니저에서는 `pinglet install`을 직접 실행)
-
-제거할 때는 반드시 integration 정리를 먼저 한다 — npm은 uninstall 시
-스크립트를 실행하지 않으므로 순서가 바뀌면 설정이 남는다:
+## 시작하기
 
 ```bash
-pinglet uninstall
-npm uninstall -g pinglet-cli
+npm install -g pinglet-cli
 ```
 
-개발 시에는 로컬 백엔드에 연결한다:
+설치가 끝나면 자동으로 Claude Code에 연결됩니다. 이후는 평소처럼 `claude`를
+실행하기만 하면 돼요. 자동 설정이 안 됐다면 `pinglet install` 한 번이면 됩니다.
+
+- 기존 statusline 설정이 있다면 **백업 후 교체할지 물어보고**, 제거 시 원래대로 복원합니다.
+- Codex도 지원합니다(experimental) — turn 완료 시 macOS 알림으로 Ping이 도착합니다.
+
+## Ping 보내기
+
+Claude Code 세션 안에서 바로:
+
+```
+> /pinglet 오늘도 빌드가 초록불이길
+```
+
+또는 터미널에서:
 
 ```bash
-npm install
-npm run build
-
-# 개발 중 로컬 백엔드에 연결
-node dist/cli.js install --api http://localhost:3000
-
-# 이후 평소처럼
-claude   # statusline에 💌 Ping 표시
-codex    # turn 완료 시 macOS 알림으로 Ping 전달 (experimental)
+pinglet login          # GitHub 로그인 — 브라우저가 열리고 자동으로 완료됩니다 (최초 1회)
+pinglet post "메시지"
 ```
+
+읽기는 로그인 없이 가능하고, **작성에만 GitHub 로그인이 필요합니다.**
+내가 보낸 Ping이 얼마나 퍼졌는지는 statusline에서 바로 확인됩니다:
+
+```
+💌 내 Ping "오늘도 빌드가 초록불이길" → 도달률 17%
+```
+
+## 명령어
 
 | 명령 | 설명 |
 |---|---|
-| `pinglet install [--api <url>] [--force]` | Claude Code / Codex 자동 감지 후 integration 설치 + 서버 등록 + 초기 feed 캐시 |
-| `pinglet uninstall [--purge]` | integration 제거, 기존 설정 복원. `--purge`는 `~/.pinglet`까지 삭제 |
-| `pinglet login [--token <jwt>]` | GitHub 로그인 후 익명 설치를 계정에 연결 |
-| `pinglet post "메시지" [--category <c>]` | 메시지 작성 (GitHub 로그인 필요, 읽기는 로그인 없이 가능) |
-| `pinglet doctor` | 설치/캐시/큐/서버 상태 진단 |
-| `pinglet ping` | 메시지 미리보기 (이벤트 기록 없음) |
+| `pinglet install` | Claude Code / Codex 감지 후 연결 |
+| `pinglet login` | GitHub 계정 연결 (메시지 작성에 필요) |
+| `pinglet post "메시지"` | Ping 보내기 |
+| `pinglet ping` | 지금 표시될 메시지 미리보기 |
+| `pinglet doctor` | 설치·연결 상태 진단 |
+| `pinglet uninstall` | 연결 해제 및 기존 설정 복원 |
 
-내부 명령(integration이 호출): `statusline`, `notify`, `flush`, `refresh`
+## 안심하고 쓰세요
 
-### 세션 안에서 바로 작성
+- **토큰 사용량 0** — 메시지는 Claude Code의 UI 영역(statusline/spinner)에만
+  표시되고 모델 컨텍스트에는 전혀 들어가지 않습니다. API 비용과 응답 품질에
+  영향이 없습니다.
+- **코드를 읽지 않습니다** — prompt, 응답, 코드, 환경변수에 접근하지 않습니다.
+  수집하는 것은 설치 ID, OS 종류, 클라이언트 버전, 메시지 노출 이벤트뿐입니다.
+- **터미널이 느려지지 않습니다** — 표시는 로컬 캐시만 읽어서 그리며, 네트워크는
+  백그라운드에서만 사용합니다. 오프라인에서도 동작합니다.
+- **모든 메시지는 검수를 거칩니다** — URL·개인정보·제어문자·부적절한 표현은
+  자동으로 걸러지며, 문제가 되는 메시지는 발견 시 바로 내려주세요
+  (아래 문의·피드백 링크).
 
-Claude Code 세션에서 `/pinglet 메시지`를 입력하면 등록된다.
-install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며,
-등록 자체는 command 안의 인라인 bash 실행(`pinglet post`)이 수행하고
-모델은 결과 한 줄만 전달하므로 토큰 사용이 매우 적다.
+## 제거
 
+```bash
+pinglet uninstall            # 연결 해제 + 기존 설정 복원 (npm 제거보다 먼저!)
+npm uninstall -g pinglet-cli
 ```
-> /pinglet 금요일 오후 배포는 다음 생에 합시다.
-```
 
-## Integration 방식
-
-- **Claude Adapter** — `~/.claude/settings.json`의 `statusLine` hook에
-  `node <cli> statusline`을 연결한다. statusline은 UI 영역이라 LLM context에
-  전혀 들어가지 않으며(Zero Token), Thinking/Working 중에 메시지가 보인다.
-  기존 statusLine 설정은 백업 후 uninstall 시 복원한다.
-  - **Spinner verbs (pool=1 회전)** — `spinnerVerbs`(mode: "replace")에 메시지를
-    **한 번에 하나만** 등록해 "Befuddling…" 자리에 Ping이 표시된다. statusline이
-    60초마다 다음 메시지로 교체하며, Claude Code가 설정을 핫리로드하므로 세션
-    중에도 즉시 반영된다. pool이 1개라 "spinner가 돌았다 = 이 메시지가 표시됐다"가
-    확정된다. Pinglet verb는 zero-width space 마커로 식별하므로 사용자가 직접
-    등록한 verb는 건드리지 않고, uninstall 시 원래대로 복원한다.
-- **Codex Adapter (experimental)** — `~/.codex/config.toml`의 `notify` hook에 연결.
-  notify는 TUI 밖 프로세스라 터미널 안에 그릴 수 없어, MVP에서는 turn 완료 시
-  macOS 알림으로 전달한다.
-
-## 아키텍처 원칙 구현
-
-- **Local-first Rendering** — 서버 feed를 30~50개 미리 받아 `~/.pinglet/feed.json`에
-  캐시하고, 렌더링 순간에는 로컬 파일만 동기 I/O로 읽는다. 렌더링 path에
-  네트워크가 절대 들어가지 않는다.
-- **오프라인 동작** — 서버 미연결 시 시드 메시지로 동작하고, 등록/feed 갱신은
-  백그라운드 `refresh`가 온라인이 되면 자동 재시도한다.
-- **DELIVERED / QUALIFIED_IMPRESSION 분리** — 메시지가 spinner에 armed되면
-  DELIVERED(설치당 1회), armed된 동안 spinner가 3초 이상 실제로 돌았으면
-  QUALIFIED_IMPRESSION(visibleMs 포함)으로 정산한다. "실제로 돌았는지"는
-  statusline hook이 받는 `cost.total_api_duration_ms` 증가분으로 측정한다 —
-  pool이 1개이므로 API 활동 시간만큼 그 메시지가 표시된 것이 확정된다.
-- **Async Telemetry** — 이벤트는 `~/.pinglet/events.jsonl`(Local Event Queue)에
-  append하고, 20개 이상 또는 60초 주기로 detached 프로세스가 batch 전송한다.
-  전송 성공분만 큐에서 제거하므로 실패분은 자동 재시도되며, 재전송 중복은
-  서버가 `eventId`로 dedupe한다.
-- **Privacy** — prompt/응답/코드/환경변수를 읽지 않는다. 수집하는 것은
-  installationId, agentType, OS, clientVersion, 메시지 delivery 이벤트뿐이다.
-
-## 백엔드 API 사용 (pinglet-backend)
-
-| 엔드포인트 | 용도 |
-|---|---|
-| `POST /installations` | agent별 익명 설치 등록 → `{installationId, token}` |
-| `GET /feed?limit=50` | 로컬 캐시용 feed 수신 (installation JWT) |
-| `POST /events/batch` | 이벤트 batch 전송 (최대 200개, eventId dedupe) |
-| `POST /messages` | 메시지 작성 (`post` 명령, 유저 JWT 또는 installation JWT) |
-| `POST /installations/heartbeat` | lastSeenAt 갱신 |
-| `POST /installations/link` | 로그인 후 설치를 계정에 연결 |
-| `GET /auth/github` | GitHub OAuth 시작 (login 명령이 브라우저로 연다) |
-
-## 로컬 파일
-
-```
-~/.pinglet/
-  config.json    # apiBaseUrl, agent별 installation 토큰, adapter 설치 정보
-  feed.json      # Local Feed Cache
-  state.json     # 현재 표시 중 메시지, seen 카운트, flush/refresh 타이밍
-  events.jsonl   # Local Event Queue (append-only)
-```
+로컬 데이터(`~/.pinglet`)까지 지우려면 `pinglet uninstall --purge`.
 
 ## 약관 및 개인정보처리방침
 
-Pinglet은 GitHub 계정 정보(로그인 시), 설치 환경 정보, 접속 IP를 서비스 제공·어뷰징
-방지 목적으로 처리합니다. 로그인하여 메시지를 작성하면 아래 문서에 동의한 것으로
-간주됩니다.
+로그인하여 메시지를 작성하면 아래 문서에 동의한 것으로 간주됩니다.
 
-- [이용약관](https://pinglet.halluci.co.kr/terms)
-- [개인정보처리방침](https://pinglet.halluci.co.kr/privacy)
+- [이용약관](https://pinglet.halluci.co.kr/terms) · [개인정보처리방침](https://pinglet.halluci.co.kr/privacy)
 
-문의: leeyeonggyun@naver.com
+문의·피드백: leeyeonggyun@naver.com · [GitHub Issues](https://github.com/mabyko/pinglet-client/issues)
