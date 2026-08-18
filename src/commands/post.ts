@@ -31,8 +31,12 @@ export async function runPost(args: string[]): Promise<void> {
   const text = rest.join(" ").trim();
 
   if (!text) {
-    console.log('사용법: pinglet post "메시지" [--category <카테고리>]');
-    process.exitCode = 1;
+    console.log(
+      quiet
+        ? "✗ 메시지가 비어 있습니다. /pinglet 뒤에 보낼 메시지를 적어주세요."
+        : '사용법: pinglet post "메시지" [--category <카테고리>]',
+    );
+    if (!quiet) process.exitCode = 1;
     return;
   }
 
@@ -60,7 +64,9 @@ export async function runPost(args: string[]): Promise<void> {
       default:
         console.log("✗ 메시지 등록에 실패했습니다.");
     }
-    process.exitCode = 1;
+    // --quiet(/pinglet slash command)에서는 exit 0 유지 — exit 1이면 Claude Code가
+    // 안내 문구 대신 "Shell command failed" 에러 덤프를 보여준다.
+    if (!quiet) process.exitCode = 1;
     return;
   }
 
@@ -86,7 +92,7 @@ export async function runPost(args: string[]): Promise<void> {
       break;
     case "REJECTED":
       console.log(`✗ 메시지가 거절됐습니다${reason ? ` — ${reason}` : ""}.`);
-      process.exitCode = 1;
+      if (!quiet) process.exitCode = 1;
       break;
   }
 }
