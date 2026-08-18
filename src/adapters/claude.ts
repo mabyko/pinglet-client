@@ -301,17 +301,20 @@ export function isClaudeIntegrationInstalled(): boolean {
 export function installClaudeIntegration(
   config: PingletConfig,
   options: { force?: boolean } = {},
-): { ok: boolean; reason?: string } {
+): { ok: boolean; reason?: string; needsForce?: boolean } {
   for (let attempt = 0; attempt < 3; attempt++) {
     const { settings, mtimeMs } = readSettingsWithMtime();
     const existing = settings.statusLine;
 
     const isOurs = existing?.command?.includes("pinglet");
     if (existing && !isOurs && !options.force) {
+      // needsForce: 호출부(install 커맨드)가 대화형이면 사용자에게 물어보고
+      // force로 재시도할 수 있다.
       return {
         ok: false,
+        needsForce: true,
         reason:
-          "기존 statusLine 설정이 있습니다. 덮어쓰려면 --force로 다시 실행하세요.",
+          "기존 statusLine 설정이 있습니다 (백업 후 교체하려면 --force).",
       };
     }
 

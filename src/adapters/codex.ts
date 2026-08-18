@@ -52,7 +52,7 @@ export function isCodexIntegrationInstalled(): boolean {
 export function installCodexIntegration(
   config: PingletConfig,
   options: { force?: boolean } = {},
-): { ok: boolean; reason?: string } {
+): { ok: boolean; reason?: string; needsForce?: boolean } {
   const toml = readToml();
   const existing = findNotifyLine(toml);
   const isOurs =
@@ -62,8 +62,8 @@ export function installCodexIntegration(
   if (existing && !isOurs && !options.force) {
     return {
       ok: false,
-      reason:
-        "기존 notify 설정이 있습니다. 덮어쓰려면 --force로 다시 실행하세요.",
+      needsForce: true,
+      reason: "기존 notify 설정이 있습니다 (백업 후 교체하려면 --force).",
     };
   }
 

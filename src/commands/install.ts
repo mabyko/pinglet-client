@@ -1,3 +1,4 @@
+import * as readline from "readline";
 import { loadConfig, saveConfig } from "../config";
 import { checkHealth, fetchFeed, registerInstallation } from "../api";
 import { saveFeedMessages } from "../cache";
@@ -8,6 +9,28 @@ import {
 } from "../adapters/claude";
 import { detectCodex, installCodexIntegration } from "../adapters/codex";
 import { AgentType } from "../types";
+
+/**
+ * 기존 설정 교체 확인. Enter 또는 y면 진행(기본 Yes — 설치 의도가 명확하므로).
+ * non-TTY(postinstall, CI)에서는 묻지 않고 false — 사용자 설정을 말없이
+ * 바꾸지 않는다.
+ */
+function confirmReplace(question: string): Promise<boolean> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return Promise.resolve(false);
+  }
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) =>
+    rl.question(question, (answer) => {
+      rl.close();
+      const trimmed = answer.trim();
+      resolve(trimmed === "" || /^y(es)?$/i.test(trimmed));
+    }),
+  );
+}
 
 export async function runInstall(args: string[]): Promise<void> {
   const force = args.includes("--force");
@@ -55,7 +78,13 @@ export async function runInstall(args: string[]): Promise<void> {
 
   if (hasClaude) {
     await register("CLAUDE");
-    const result = installClaudeIntegration(config, { force });
+    let result = installClaudeIntegration(config, { force });
+    if (!result.ok && result.needsForce) {
+      const yes = await confirmReplace(
+        "  기존 statusLine 설정이 있습니다. 백업 후 교체할까요? (uninstall 시 복원) (Y/n) ",
+      );
+      if (yes) result = installClaudeIntegration(config, { force: true });
+    }
     console.log(
       result.ok
         ? "✓ Claude integration installed"
@@ -65,7 +94,13 @@ export async function runInstall(args: string[]): Promise<void> {
 
   if (hasCodex) {
     await register("CODEX");
-    const result = installCodexIntegration(config, { force });
+    let result = installCodexIntegration(config, { force });
+    if (!result.ok && result.needsForce) {
+      const yes = await confirmReplace(
+        "  기존 notify 설정이 있습니다. 백업 후 교체할까요? (uninstall 시 복원) (Y/n) ",
+      );
+      if (yes) result = installCodexIntegration(config, { force: true });
+    }
     console.log(
       result.ok
         ? "✓ Codex integration installed (experimental)"
