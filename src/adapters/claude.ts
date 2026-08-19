@@ -45,9 +45,30 @@ function isPingletHookEntry(entry: HookEntry): boolean {
 }
 
 /**
+ * `/pinglet` 인라인 bash를 허용하는 settings.json 권한 규칙.
+ * auto 권한 모드에서는 allow 규칙에 없는 Bash 명령을 LLM 분류기가 심사하는데,
+ * 메시지 내용("~해라" 같은 명령문)에 따라 차단될 수 있어 규칙으로 명시한다.
+ */
+function postPermissionRule(): string {
+  return `Bash(node "${cliPath()}" post:*)`;
+}
+
+/** Pinglet이 등록한 post 권한 규칙인지 식별 (경로가 바뀐 옛 규칙 포함). */
+function isPingletPermissionRule(rule: string): boolean {
+  return (
+    rule === postPermissionRule() ||
+    (rule.startsWith('Bash(node "') &&
+      rule.includes("pinglet") &&
+      rule.endsWith('" post:*)'))
+  );
+}
+
+/**
  * `/pinglet` slash command 파일을 설치한다.
  * 등록 자체는 command 안의 인라인 bash(`!` 실행)가 수행하고,
  * 모델은 그 결과 한 줄만 전달하므로 토큰 사용이 매우 적다.
+ * $ARGUMENTS는 따옴표로 감싸 메시지 전체가 하나의 인자로 전달되게 한다
+ * (메시지 속 단어가 셸/CLI 플래그로 해석되는 것을 방지).
  */
 function installSlashCommand(): void {
   fs.mkdirSync(COMMANDS_DIR, { recursive: true });
@@ -59,7 +80,7 @@ allowed-tools: Bash(node:*)
 ---
 <!-- ${COMMAND_MARKER} -->
 
-등록 결과: !\`node "${cliPath()}" post --quiet $ARGUMENTS\`
+등록 결과: !\`node "${cliPath()}" post --quiet "$ARGUMENTS"\`
 
 위 등록 결과 줄을 아무것도 덧붙이거나 바꾸지 말고 그대로 한 줄만 출력하세요.
 다른 설명, 안내, 작업을 일절 하지 마세요.
@@ -116,6 +137,7 @@ interface ClaudeSettings {
   spinnerTipsOverride?: SpinnerTipsOverride;
   spinnerVerbs?: SpinnerVerbs;
   hooks?: Record<string, HookEntry[]>;
+  permissions?: { allow?: string[]; [key: string]: unknown };
   [key: string]: unknown;
 }
 
@@ -330,6 +352,14 @@ export function installClaudeIntegration(
 
     settings.statusLine = { type: "command", command: statusLineCommand() };
     uninstallPromptHook(settings); // 구버전 hook 방식 흔적 정리
+
+    // /pinglet 인라인 bash가 auto 모드 분류기에 막히지 않도록 allow 규칙 등록.
+    // 경로가 바뀐(예: node 버전 업) 옛 규칙은 정리하고 현재 규칙 하나만 둔다.
+    const permissions = (settings.permissions ??= {});
+    const allow = (permissions.allow ??= []);
+    const kept = allow.filter((rule) => !isPingletPermissionRule(rule));
+    permissions.allow = [...kept, postPermissionRule()];
+
     if (!writeSettings(settings, mtimeMs)) continue; // 다른 프로세스와 충돌 → 재읽기
     installSlashCommand();
 
@@ -366,6 +396,20 @@ export function uninstallClaudeIntegration(config: PingletConfig): boolean {
     }
 
     if (uninstallPromptHook(settings)) {
+      settingsChanged = true;
+    }
+
+    const allow = settings.permissions?.allow;
+    if (allow?.some(isPingletPermissionRule)) {
+      const kept = allow.filter((rule) => !isPingletPermissionRule(rule));
+      if (kept.length > 0) {
+        settings.permissions!.allow = kept;
+      } else {
+        delete settings.permissions!.allow;
+        if (Object.keys(settings.permissions!).length === 0) {
+          delete settings.permissions;
+        }
+      }
       settingsChanged = true;
     }
 

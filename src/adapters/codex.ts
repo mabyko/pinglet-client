@@ -37,15 +37,48 @@ function readToml(): string {
   }
 }
 
-function findNotifyLine(toml: string): string | null {
-  const match = toml.match(/^\s*notify\s*=.*$/m);
-  return match ? match[0] : null;
+/**
+ * config.toml에서 notify 항목 **전체**를 찾는다. TOML 배열은 여러 줄에
+ * 걸칠 수 있으므로 (Codex Computer Use 앱 등이 그렇게 쓴다) 값이 `[`로
+ * 시작하면 문자열 리터럴을 건너뛰며 짝이 맞는 `]`까지를 항목으로 본다.
+ * 한 줄만 매칭하면 교체/삭제 시 배열 본문이 고아로 남아 TOML이 깨진다.
+ */
+function findNotifyEntry(toml: string): string | null {
+  const head = toml.match(/^[ \t]*notify[ \t]*=[ \t]*/m);
+  if (!head || head.index === undefined) return null;
+  const start = head.index;
+  let i = start + head[0].length;
+
+  if (toml[i] !== "[") {
+    const lineEnd = toml.indexOf("\n", i);
+    return toml.slice(start, lineEnd === -1 ? toml.length : lineEnd);
+  }
+
+  let depth = 0;
+  for (; i < toml.length; i++) {
+    const ch = toml[i];
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      i++;
+      while (i < toml.length && toml[i] !== quote) {
+        if (quote === '"' && toml[i] === "\\") i++; // basic string escape
+        i++;
+      }
+    } else if (ch === "[") {
+      depth++;
+    } else if (ch === "]") {
+      depth--;
+      if (depth === 0) return toml.slice(start, i + 1);
+    }
+  }
+  // 괄호 짝이 안 맞음 — 이미 깨진 파일이므로 건드리지 않는다.
+  return null;
 }
 
 export function isCodexIntegrationInstalled(): boolean {
-  const line = findNotifyLine(readToml());
+  const entry = findNotifyEntry(readToml());
   return (
-    line !== null && (line.includes("pinglet") || line.includes(cliPath()))
+    entry !== null && (entry.includes("pinglet") || entry.includes(cliPath()))
   );
 }
 
@@ -54,7 +87,7 @@ export function installCodexIntegration(
   options: { force?: boolean } = {},
 ): { ok: boolean; reason?: string; needsForce?: boolean } {
   const toml = readToml();
-  const existing = findNotifyLine(toml);
+  const existing = findNotifyEntry(toml);
   const isOurs =
     existing !== null &&
     (existing.includes("pinglet") || existing.includes(cliPath()));
@@ -68,6 +101,8 @@ export function installCodexIntegration(
   }
 
   config.adapters.codex = {
+    // 재설치 시 기존 백업(notifyBackup)이 날아가지 않게 유지한다.
+    ...config.adapters.codex,
     installedAt: new Date().toISOString(),
     configPath: CONFIG_TOML_PATH,
     ...(existing && !isOurs && { notifyBackup: existing }),
@@ -88,7 +123,7 @@ export function installCodexIntegration(
 
 export function uninstallCodexIntegration(config: PingletConfig): boolean {
   const toml = readToml();
-  const existing = findNotifyLine(toml);
+  const existing = findNotifyEntry(toml);
   const isOurs =
     existing !== null &&
     (existing.includes("pinglet") || existing.includes(cliPath()));
