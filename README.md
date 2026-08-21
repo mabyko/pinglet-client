@@ -5,9 +5,13 @@
 Claude Code가 코드를 고치는 동안 "Befuddling…" 스피너만 바라보던 그 자리에,
 다른 개발자들이 남긴 짧은 메시지(**Ping**)가 대신 표시됩니다.
 
+![Pinglet 데모 — Claude Code 스피너 자리에 다른 개발자의 Ping이 표시된다](docs/pinglet-demo.gif)
+
 ```
 ✶ 💌 "금요일 오후 배포는 다음 생에 합시다." (12s · ↓ 1.2k tokens)
 ```
+
+🌐 **홈페이지**: https://pinglet.halluci.co.kr
 
 ## 시작하기
 
