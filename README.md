@@ -27,6 +27,7 @@ npm install -g pinglet-cli && pinglet install
 
 - 기존 statusline 설정이 있다면 **백업 후 교체할지 물어보고**, 제거 시 원래대로 복원합니다.
 - Codex도 지원합니다(experimental) — turn 완료 시 macOS 알림으로 Ping이 도착합니다.
+  알림 방식이 시끄러울 수 있어 기본 설치에서는 제외되며, 원할 때만 `pinglet install --codex`로 켜세요.
 
 ## Ping 보내기
 
@@ -54,7 +55,7 @@ pinglet post "메시지"
 
 | 명령 | 설명 |
 |---|---|
-| `pinglet install` | Claude Code / Codex 감지 후 연결 |
+| `pinglet install` | Claude Code 연결 (Codex는 `--codex`로 opt-in) |
 | `pinglet login` | GitHub 계정 연결 (메시지 작성에 필요) |
 | `pinglet post "메시지"` | Ping 보내기 |
 | `pinglet ping` | 지금 표시될 메시지 미리보기 |

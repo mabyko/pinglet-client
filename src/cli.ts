@@ -15,8 +15,8 @@ const HELP = `pinglet v${VERSION} — AI가 생각하는 동안 만나는 개발
 
 사용법: pinglet <command>
 
-  install [--api <url>] [--force]   Claude Code / Codex 자동 감지 후 integration 설치
-          [--claude | --codex]      특정 agent만 설치
+  install [--api <url>] [--force]   Claude Code integration 설치
+          [--claude | --codex]      Codex는 OS 알림 방식이라 --codex로 opt-in (experimental)
   uninstall [--purge]               integration 제거 (--purge: ~/.pinglet까지 삭제)
   login [--token <jwt>]             GitHub 계정 연결
   post "메시지" [--category <c>]     메시지 작성 (GitHub 로그인 필요, 읽기는 익명 가능)

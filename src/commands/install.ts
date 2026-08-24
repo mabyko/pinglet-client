@@ -34,11 +34,12 @@ function confirmReplace(question: string): Promise<boolean> {
 
 export async function runInstall(args: string[]): Promise<void> {
   const force = args.includes("--force");
-  // --claude / --codex로 대상을 고를 수 있다. 둘 다 없으면 감지된 전부.
+  // Claude는 기본 설치 대상. Codex는 TUI에 그릴 수 없어 OS 알림으로 전달하는
+  // 방식인데 이게 체감상 시끄러워서, --codex를 명시한 경우에만(opt-in) 설치한다.
   const onlyClaude = args.includes("--claude");
   const onlyCodex = args.includes("--codex");
   const wantClaude = onlyClaude || !onlyCodex;
-  const wantCodex = onlyCodex || !onlyClaude;
+  const wantCodex = onlyCodex;
   const config = loadConfig();
 
   const apiIndex = args.indexOf("--api");
@@ -51,7 +52,13 @@ export async function runInstall(args: string[]): Promise<void> {
   const hasClaude = wantClaude && detectClaude();
   const hasCodex = wantCodex && detectCodex();
   console.log(hasClaude ? "✓ Claude Code detected" : "○ Claude Code not found");
-  console.log(hasCodex ? "✓ Codex detected" : "○ Codex not found");
+  if (wantCodex) {
+    console.log(hasCodex ? "✓ Codex detected" : "○ Codex not found");
+  } else if (detectCodex()) {
+    console.log(
+      "○ Codex 감지됨 — OS 알림 방식이라 기본 설치에서 제외합니다 (원하면 pinglet install --codex)",
+    );
+  }
 
   if (!hasClaude && !hasCodex) {
     console.log("\n설치할 대상이 없습니다. Claude Code 또는 Codex를 먼저 설치해 주세요.");
@@ -123,7 +130,10 @@ export async function runInstall(args: string[]): Promise<void> {
     }
   }
 
-  console.log("\n설치 완료! 평소처럼 claude 또는 codex를 실행하면 Ping이 표시됩니다.");
+  const targets = [hasClaude && "claude", hasCodex && "codex"]
+    .filter(Boolean)
+    .join(" 또는 ");
+  console.log(`\n설치 완료! 평소처럼 ${targets}를 실행하면 Ping이 표시됩니다.`);
   console.log("  상태 확인:   pinglet doctor");
   console.log('  메시지 작성: pinglet login 후 pinglet post "메시지"');
   console.log("  계정 연결:   pinglet login  (메시지 작성/반응에 필요)");
