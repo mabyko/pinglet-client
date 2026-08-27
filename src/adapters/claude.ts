@@ -188,9 +188,23 @@ function writeSettings(
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
   if (settingsMtimeMs() !== expectedMtimeMs) return false;
   // settings.json은 Claude Code가 수시로 읽는 파일이라 tmp+rename으로 원자적으로 쓴다.
-  const tmp = SETTINGS_PATH + ".pinglet-tmp";
-  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + "\n");
-  fs.renameSync(tmp, SETTINGS_PATH);
+  // tmp 이름에 pid를 붙여 프로세스마다 다르게 만든다 — 여러 세션의 statusline이
+  // 동시에 돌면 같은 tmp에 겹쳐 쓰게 되고, writeFileSync는 truncate 후 쓰기라
+  // 짧은 내용 뒤에 긴 내용의 꼬리가 남은 채로 rename 되어 settings.json이 깨진다.
+  // rename 자체는 tmp 이름과 무관하게 원자적이라 이것만으로 충분하다.
+  const tmp = `${SETTINGS_PATH}.pinglet-tmp.${process.pid}`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + "\n");
+    fs.renameSync(tmp, SETTINGS_PATH);
+  } catch (error) {
+    // rename 전에 실패하면 tmp가 남는다 — 이름이 pid별로 달라 방치하면 쌓인다.
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      // 이미 없으면 무시
+    }
+    throw error;
+  }
   return true;
 }
 
