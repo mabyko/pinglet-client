@@ -1,5 +1,6 @@
 import { loadConfig, saveConfig } from "../config";
 import { fetchFeed, registerInstallation, sendHeartbeat } from "../api";
+import { maybeSelfUpdate } from "../update";
 import {
   loadState,
   saveFeedMessages,
@@ -54,4 +55,7 @@ export async function runRefresh(): Promise<void> {
       saveState(state);
     }
   }
+
+  // 하루 1회 새 버전 확인 후 npm 전역 설치면 백그라운드 자동 업데이트.
+  await maybeSelfUpdate(config);
 }

@@ -24,6 +24,8 @@ export const EVENTS_PATH = path.join(PINGLET_DIR, "events.jsonl");
 export const POSTS_PATH = path.join(PINGLET_DIR, "posts.json");
 /** 지금 켜져 있는 터미널 수 캐시 — heartbeat 응답으로 갱신, statusline이 읽는다 */
 export const ONLINE_PATH = path.join(PINGLET_DIR, "online.json");
+/** 자동 업데이트 진행 기록 — refresh가 하루 1회 갱신 */
+export const UPDATE_PATH = path.join(PINGLET_DIR, "update.json");
 
 export const DEFAULT_API_BASE_URL =
   process.env.PINGLET_API_URL ?? "https://pinglet.halluci.co.kr";
@@ -32,6 +34,8 @@ export interface PingletConfig {
   apiBaseUrl: string;
   createdAt: string;
   userToken?: string;
+  /** false면 자동 업데이트를 끈다 (기본: 켜짐, npm 전역 설치에서만 동작) */
+  autoUpdate?: boolean;
   /** agent별 백엔드 installation 등록 정보 (POST /installations 응답) */
   installations: Partial<Record<AgentType, InstallRecord>>;
   adapters: {

@@ -56,6 +56,12 @@ The statusline shows how many terminals are coding alongside you right now:
 
 The statusline picks its language from your system language (Korean/Japanese, English otherwise), falling back to your timezone (Seoul/Tokyo) when the language doesn't decide it.
 
+## Auto-update
+
+Pinglet checks for a new version once a day in the background and updates
+itself automatically (only for npm global installs — pnpm/yarn installs are
+left untouched). To opt out, add `"autoUpdate": false` to `~/.pinglet/config.json`.
+
 ## Commands
 
 | Command | Description |
