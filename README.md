@@ -47,11 +47,14 @@ pinglet post "message"
 ```
 
 Reading requires no login; **only posting requires a GitHub login.**
-You can see how far your Ping has traveled right in the statusline:
+
+The statusline shows how many terminals are coding alongside you right now:
 
 ```
-💌 My Ping "may your build stay green today" → reach 17%
+🟢 coding along with 41 terminals right now
 ```
+
+The statusline picks its language from your location (system timezone) — Korean in Korea, Japanese in Japan, English everywhere else.
 
 ## Commands
 

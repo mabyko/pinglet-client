@@ -70,7 +70,7 @@ export async function runPost(args: string[]): Promise<void> {
     return;
   }
 
-  // statusline 도달 표시용으로 이 기기에서 쓴 메시지를 기록해 둔다.
+  // 이 기기에서 쓴 메시지를 기록해 둔다.
   if (result.id && result.status !== "REJECTED") {
     saveMyPost({ id: result.id, text, postedAt: new Date().toISOString() });
   }

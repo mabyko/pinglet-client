@@ -118,38 +118,23 @@ export async function uploadEventBatch(
   return res !== null;
 }
 
+/** POST /installations/heartbeat — lastSeenAt 갱신. 응답의 온라인 설치 수를 돌려준다(구서버는 null). */
 export async function sendHeartbeat(
   config: PingletConfig,
   record: InstallRecord,
-): Promise<void> {
-  await request(config, "POST", "/installations/heartbeat", {
-    token: record.token,
-    body: { clientVersion: VERSION },
-  });
-}
-
-export interface MessageStats {
-  messageId: string;
-  delivered: number;
-  qualifiedImpressions: number;
-  qualifiedRate: number;
-  reactions: number;
-  reachedInstallations: number;
-  /** 최근 7일 활성 설치 수 — 커버리지 분모 (구서버는 미포함) */
-  activeInstallations?: number;
-}
-
-/** GET /messages/:id/stats — 내가 쓴 메시지의 도달 통계 (익명 작성자는 설치 토큰으로). */
-export async function fetchMessageStats(
-  config: PingletConfig,
-  messageId: string,
-): Promise<MessageStats | null> {
-  const token =
-    config.userToken ?? Object.values(config.installations)[0]?.token;
-  if (!token) return null;
-  return request<MessageStats>(config, "GET", `/messages/${messageId}/stats`, {
-    token,
-  });
+): Promise<number | null> {
+  const res = await request<{ ok: boolean; onlineInstallations?: number }>(
+    config,
+    "POST",
+    "/installations/heartbeat",
+    {
+      token: record.token,
+      body: { clientVersion: VERSION },
+    },
+  );
+  return typeof res?.onlineInstallations === "number"
+    ? res.onlineInstallations
+    : null;
 }
 
 export interface CreateMessageResult {

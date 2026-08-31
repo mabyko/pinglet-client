@@ -54,16 +54,10 @@ export interface MyPostRecord {
   postedAt: string;
 }
 
-/** mystats.json — 최근 작성 메시지의 도달 통계 캐시. */
-export interface MyStatsCache {
-  messageId: string;
-  text: string;
-  reachedInstallations: number;
-  /** 최근 7일 활성 설치 수 (커버리지 분모) */
-  activeInstallations?: number;
-  delivered: number;
-  qualifiedImpressions: number;
-  reactions: number;
+/** online.json — 지금 켜져 있는 설치 수 캐시 (heartbeat 응답, statusline 표시용). */
+export interface OnlineCache {
+  /** 서버가 센 온라인 설치 수 — 자기 자신 포함 */
+  onlineInstallations: number;
   updatedAt: string;
 }
 

@@ -20,10 +20,10 @@ export const CONFIG_PATH = path.join(PINGLET_DIR, "config.json");
 export const FEED_PATH = path.join(PINGLET_DIR, "feed.json");
 export const STATE_PATH = path.join(PINGLET_DIR, "state.json");
 export const EVENTS_PATH = path.join(PINGLET_DIR, "events.jsonl");
-/** 이 기기에서 작성한 메시지 기록 (statusline 도달 표시용) */
+/** 이 기기에서 작성한 메시지 기록 */
 export const POSTS_PATH = path.join(PINGLET_DIR, "posts.json");
-/** 최근 작성 메시지의 도달 통계 캐시 — refresh가 갱신, statusline이 읽는다 */
-export const MYSTATS_PATH = path.join(PINGLET_DIR, "mystats.json");
+/** 지금 켜져 있는 터미널 수 캐시 — heartbeat 응답으로 갱신, statusline이 읽는다 */
+export const ONLINE_PATH = path.join(PINGLET_DIR, "online.json");
 
 export const DEFAULT_API_BASE_URL =
   process.env.PINGLET_API_URL ?? "https://pinglet.halluci.co.kr";

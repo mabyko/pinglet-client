@@ -1,15 +1,9 @@
 import { loadConfig, saveConfig } from "../config";
+import { fetchFeed, registerInstallation, sendHeartbeat } from "../api";
 import {
-  fetchFeed,
-  fetchMessageStats,
-  registerInstallation,
-  sendHeartbeat,
-} from "../api";
-import {
-  loadMyPosts,
   loadState,
   saveFeedMessages,
-  saveMyStats,
+  saveOnline,
   saveState,
 } from "../cache";
 import { armSpinnerMessage } from "../adapters/claude";
@@ -39,7 +33,13 @@ export async function runRefresh(): Promise<void> {
   const records = Object.values(config.installations);
   if (records.length === 0) return;
 
-  await Promise.all(records.map((r) => sendHeartbeat(config, r)));
+  const onlineCounts = await Promise.all(
+    records.map((r) => sendHeartbeat(config, r)),
+  );
+  const online = onlineCounts.find((n): n is number => n !== null);
+  if (online !== undefined) {
+    saveOnline(online);
+  }
 
   const messages = await fetchFeed(config, records[0]);
   if (messages) {
@@ -52,24 +52,6 @@ export async function runRefresh(): Promise<void> {
       armSpinnerMessage(config, messages[0] ?? null);
       state.current = undefined; // 다음 statusline tick이 정식으로 다음 메시지를 armed한다
       saveState(state);
-    }
-  }
-
-  // 이 기기에서 작성한 최근 메시지의 도달 통계를 갱신한다 (statusline 표시용).
-  const latest = loadMyPosts()[0];
-  if (latest) {
-    const stats = await fetchMessageStats(config, latest.id);
-    if (stats) {
-      saveMyStats({
-        messageId: latest.id,
-        text: latest.text,
-        reachedInstallations: stats.reachedInstallations,
-        activeInstallations: stats.activeInstallations,
-        delivered: stats.delivered,
-        qualifiedImpressions: stats.qualifiedImpressions,
-        reactions: stats.reactions,
-        updatedAt: new Date().toISOString(),
-      });
     }
   }
 }

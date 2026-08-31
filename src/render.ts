@@ -1,5 +1,32 @@
 import { FeedMessage } from "./types";
 
+export type DisplayLocale = "ko" | "ja" | "en";
+
+/**
+ * statusline 표시 언어: 사용자 "위치" 기준 — 한국이면 한국어, 일본이면 일본어,
+ * 그 외 영어. 네트워크 없이 판정해야 하므로(오프라인 동작 원칙) 시스템
+ * 타임존을 위치의 근사로 쓰고, 타임존을 못 읽으면 시스템 언어로 추정한다.
+ */
+export function detectLocale(): DisplayLocale {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    if (tz === "Asia/Seoul") return "ko";
+    if (tz === "Asia/Tokyo") return "ja";
+    if (tz) return "en";
+  } catch {
+    // Intl이 없는 환경 — 아래 언어 폴백으로.
+  }
+  const lang = (
+    process.env.LC_ALL ||
+    process.env.LC_MESSAGES ||
+    process.env.LANG ||
+    ""
+  ).toLowerCase();
+  if (lang.startsWith("ko")) return "ko";
+  if (lang.startsWith("ja")) return "ja";
+  return "en";
+}
+
 /** 터미널 독립 원칙: unicode가 불확실하면 plain ASCII로 fallback (아키텍처 §5). */
 export function supportsUnicode(): boolean {
   if (process.platform === "win32") return true; // Windows Terminal 기준
@@ -30,29 +57,19 @@ export function formatPing(message: FeedMessage): string {
   return `[ping] ${sponsored}"${text}"`;
 }
 
-const REACH_TEXT_MAX = 24;
-
-/** statusline용: 내가 쓴 최근 메시지의 도달 현황 한 줄 (커버리지 = 도달/활성 설치). */
-export function formatMyReach(stats: {
-  text: string;
-  reachedInstallations: number;
-  activeInstallations?: number;
-}): string {
-  let text = sanitizeForTerminal(stats.text);
-  if (text.length > REACH_TEXT_MAX) text = text.slice(0, REACH_TEXT_MAX - 1) + "…";
-  const reached = stats.reachedInstallations;
-  const active = stats.activeInstallations ?? 0;
-  // 활성 설치 수를 모르면(구서버/구캐시) 도달 수만 표시한다.
-  const coverage =
-    active > 0
-      ? `도달률 ${Math.round((reached / active) * 100)}%`
-      : `터미널 ${reached}곳 도달`;
-  if (supportsUnicode()) {
-    return `💌 내 Ping "${text}" → ${coverage}`;
+/** statusline용: 지금 함께 켜져 있는 다른 터미널 수 한 줄. */
+export function formatOnlineNow(othersCount: number): string {
+  const n = othersCount;
+  // 한국어·일본어는 unicode 전제 — 못 그리는 터미널이면 ASCII 영어로.
+  if (!supportsUnicode()) {
+    return `[ping] coding along with ${n} ${n === 1 ? "terminal" : "terminals"} now`;
   }
-  const asciiCoverage =
-    active > 0
-      ? `reach ${Math.round((reached / active) * 100)}%`
-      : `reached ${reached} terminals`;
-  return `[ping] "${text}" -> ${asciiCoverage}`;
+  switch (detectLocale()) {
+    case "ko":
+      return `🟢 지금 ${n}개 터미널과 함께 코딩 중`;
+    case "ja":
+      return `🟢 いま${n}個のターミナルと一緒にコーディング中`;
+    default:
+      return `🟢 coding along with ${n} ${n === 1 ? "terminal" : "terminals"} right now`;
+  }
 }

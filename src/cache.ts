@@ -1,6 +1,6 @@
 import {
   FEED_PATH,
-  MYSTATS_PATH,
+  ONLINE_PATH,
   POSTS_PATH,
   STATE_PATH,
   readJsonFile,
@@ -10,7 +10,7 @@ import {
   FeedCacheFile,
   FeedMessage,
   MyPostRecord,
-  MyStatsCache,
+  OnlineCache,
   RuntimeState,
 } from "./types";
 
@@ -58,12 +58,17 @@ export function saveMyPost(post: MyPostRecord): void {
   writeJsonFile(POSTS_PATH, posts);
 }
 
-export function loadMyStats(): MyStatsCache | null {
-  return readJsonFile<MyStatsCache>(MYSTATS_PATH);
+
+export function loadOnline(): OnlineCache | null {
+  return readJsonFile<OnlineCache>(ONLINE_PATH);
 }
 
-export function saveMyStats(stats: MyStatsCache): void {
-  writeJsonFile(MYSTATS_PATH, stats);
+export function saveOnline(count: number): void {
+  const cache: OnlineCache = {
+    onlineInstallations: count,
+    updatedAt: new Date().toISOString(),
+  };
+  writeJsonFile(ONLINE_PATH, cache);
 }
 
 export function saveState(state: RuntimeState): void {

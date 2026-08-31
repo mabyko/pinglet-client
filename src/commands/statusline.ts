@@ -2,16 +2,32 @@ import * as fs from "fs";
 import { loadConfig } from "../config";
 import {
   loadFeedMessages,
-  loadMyStats,
+  loadOnline,
   loadState,
   saveState,
 } from "../cache";
-import { formatMyReach } from "../render";
+import { formatOnlineNow } from "../render";
 import { pickMessage } from "../picker";
 import { appendEvent } from "../queue";
 import { armSpinnerMessage } from "../adapters/claude";
 import { QUALIFIED_MS, ROTATE_MS, runMaintenance } from "../runtime";
 import { RuntimeState } from "../types";
+
+/**
+ * online 캐시 유효 기간 — refresh(≈5분) 3주기. 오프라인이 되면
+ * 오래된 숫자를 "지금"이라고 보여주는 대신 표시를 접는다.
+ */
+const ONLINE_STALE_MS = 15 * 60_000;
+
+/** 신선한 online 캐시가 있을 때, 나를 제외한 켜진 터미널 수 (없거나 혼자면 null). */
+function onlineOthers(now: number): number | null {
+  const cache = loadOnline();
+  if (!cache) return null;
+  const t = Date.parse(cache.updatedAt);
+  if (Number.isNaN(t) || now - t > ONLINE_STALE_MS) return null;
+  const others = cache.onlineInstallations - 1; // 이 기기의 heartbeat 제외
+  return others >= 1 ? others : null;
+}
 
 interface StatuslinePayload {
   session_id?: string;
@@ -100,7 +116,7 @@ function rotateSpinner(state: RuntimeState, now: number): void {
  * Claude Code statusLine hook 진입점.
  * - spinner 회전(pool=1): ROTATE_MS마다 다음 메시지를 armed (설정 핫리로드로 즉시 반영)
  * - 노출 측정: stdin payload의 cost 델타로 armed 메시지의 실제 표시 시간을 누적
- * - statusline 표시: 이 기기에서 작성한 최근 메시지의 도달 현황
+ * - statusline 표시: 지금 함께 켜져 있는 터미널 수
  * - flush/refresh 백그라운드 트리거 (Claude 사용 중 항상 호출되므로 이 경로에서)
  */
 export function runStatusline(): void {
@@ -126,6 +142,6 @@ export function runStatusline(): void {
     saveState(state);
   }
 
-  const stats = loadMyStats();
-  process.stdout.write(stats ? formatMyReach(stats) : "");
+  const others = onlineOthers(now);
+  process.stdout.write(others !== null ? formatOnlineNow(others) : "");
 }
