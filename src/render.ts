@@ -3,19 +3,13 @@ import { FeedMessage } from "./types";
 export type DisplayLocale = "ko" | "ja" | "en";
 
 /**
- * statusline 표시 언어: 사용자 "위치" 기준 — 한국이면 한국어, 일본이면 일본어,
- * 그 외 영어. 네트워크 없이 판정해야 하므로(오프라인 동작 원칙) 시스템
- * 타임존을 위치의 근사로 쓰고, 타임존을 못 읽으면 시스템 언어로 추정한다.
+ * statusline 표시 언어. 시스템 언어를 먼저 보고(사용자가 실제로 읽는
+ * 언어라 가장 강한 신호), 언어로 판정이 안 되면 타임존을 위치의 근사로
+ * 쓴다. 한국·일본은 둘 다 UTC+9라 타임존만으로는 오판하는 기기가 있다
+ * (예: 한국에서 Asia/Tokyo 타임존을 쓰는 기기 — 시계가 맞아서 티가 안 남).
+ * 네트워크 없이 판정한다 (오프라인 동작 원칙).
  */
 export function detectLocale(): DisplayLocale {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
-    if (tz === "Asia/Seoul") return "ko";
-    if (tz === "Asia/Tokyo") return "ja";
-    if (tz) return "en";
-  } catch {
-    // Intl이 없는 환경 — 아래 언어 폴백으로.
-  }
   const lang = (
     process.env.LC_ALL ||
     process.env.LC_MESSAGES ||
@@ -24,6 +18,13 @@ export function detectLocale(): DisplayLocale {
   ).toLowerCase();
   if (lang.startsWith("ko")) return "ko";
   if (lang.startsWith("ja")) return "ja";
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    if (tz === "Asia/Seoul") return "ko";
+    if (tz === "Asia/Tokyo") return "ja";
+  } catch {
+    // Intl이 없는 환경 — 영어로.
+  }
   return "en";
 }
 

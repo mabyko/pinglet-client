@@ -54,7 +54,7 @@ The statusline shows how many terminals are coding alongside you right now:
 🟢 coding along with 41 terminals right now
 ```
 
-The statusline picks its language from your location (system timezone) — Korean in Korea, Japanese in Japan, English everywhere else.
+The statusline picks its language from your system language (Korean/Japanese, English otherwise), falling back to your timezone (Seoul/Tokyo) when the language doesn't decide it.
 
 ## Commands
 
