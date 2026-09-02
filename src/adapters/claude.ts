@@ -35,6 +35,12 @@ function statusLineCommand(): string {
   return `node "${cliPath()}" statusline`;
 }
 
+/**
+ * statusline 이벤트 트리거는 유휴 세션에서 멈추므로(새 메시지가 있어야 재실행),
+ * 유휴 pane이 옛 온라인 터미널 수를 계속 표시하지 않게 고정 주기(초)로도 재실행한다.
+ */
+const STATUSLINE_REFRESH_INTERVAL_S = 30;
+
 /** 예전 버전이 등록한 hook entry인지 식별 (command에 hook-prompt 포함 여부). */
 function isPingletHookEntry(entry: HookEntry): boolean {
   return (
@@ -364,7 +370,11 @@ export function installClaudeIntegration(
     };
     saveConfig(config);
 
-    settings.statusLine = { type: "command", command: statusLineCommand() };
+    settings.statusLine = {
+      type: "command",
+      command: statusLineCommand(),
+      refreshInterval: STATUSLINE_REFRESH_INTERVAL_S,
+    };
     uninstallPromptHook(settings); // 구버전 hook 방식 흔적 정리
 
     // /pinglet 인라인 bash가 auto 모드 분류기에 막히지 않도록 allow 규칙 등록.

@@ -14,10 +14,11 @@ import { QUALIFIED_MS, ROTATE_MS, runMaintenance } from "../runtime";
 import { RuntimeState } from "../types";
 
 /**
- * online 캐시 유효 기간 — refresh(≈5분) 3주기. 오프라인이 되면
- * 오래된 숫자를 "지금"이라고 보여주는 대신 표시를 접는다.
+ * online 캐시 유효 기간 — refresh(≈5분) 2주기. 서버의 온라인 판정 창
+ * (ONLINE_WINDOW_MS 10분)과 정렬해, 서버가 이미 오프라인으로 세는 시점에
+ * 클라이언트가 옛 숫자를 "지금"이라고 보여주지 않게 한다.
  */
-const ONLINE_STALE_MS = 15 * 60_000;
+const ONLINE_STALE_MS = 10 * 60_000;
 
 /** 신선한 online 캐시가 있을 때, 나를 제외한 켜진 터미널 수 (없거나 혼자면 null). */
 function onlineOthers(now: number): number | null {
