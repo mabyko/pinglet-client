@@ -36,7 +36,9 @@ npm install -g pinglet-cli && pinglet install
 Claude Code 세션 안에서 바로:
 
 ```
+> /pinglet-login                      # 최초 1회 — 브라우저에서 GitHub 또는 Google 로그인
 > /pinglet 오늘도 빌드가 초록불이길
+> /pinglet-logout                     # 이 기기의 로그인 해제
 ```
 
 또는 터미널에서:

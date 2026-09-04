@@ -36,7 +36,9 @@ That's it. Just run `claude` as usual.
 Right from a Claude Code session:
 
 ```
+> /pinglet-login                      # once — GitHub or Google login in the browser
 > /pinglet may your build stay green today
+> /pinglet-logout                     # sign out on this machine
 ```
 
 Or from the terminal:

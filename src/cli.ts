@@ -22,6 +22,7 @@ const HELP = `pinglet v${VERSION} — AI가 생각하는 동안 만나는 개발
   login [--github | --google]       계정 연결 (GitHub 또는 Google, 생략 시 브라우저에서 선택)
         [--token <jwt>]
   logout                            로그인 해제 (설치·캐시는 유지)
+                                    (Claude Code 안에서는 /pinglet-login, /pinglet-logout)
   post "메시지" [--category <c>]     메시지 작성 (로그인 필요, 읽기는 익명 가능)
   doctor                            설치/캐시/서버 상태 진단
   ping                              메시지 미리보기

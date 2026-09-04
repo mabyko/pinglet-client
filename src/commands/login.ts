@@ -106,9 +106,12 @@ function loginViaLoopback(
 /**
  * 소셜 로그인(GitHub/Google) — 루프백 자동 수신, 실패 시 수동 붙여넣기 폴백.
  * `--github` / `--google`로 방식을 고정하고, 없으면 브라우저에서 고른다.
+ * `--quiet`: /pinglet-login slash command용 — 터미널 입력을 받을 수 없으므로
+ * 붙여넣기 폴백 대신 안내만 출력하고, 실패해도 exit 0 (에러 덤프 방지).
  */
 export async function runLogin(args: string[]): Promise<void> {
   const config = loadConfig();
+  const quiet = args.includes("--quiet");
 
   let token: string | undefined;
   const tokenIndex = args.indexOf("--token");
@@ -126,6 +129,12 @@ export async function runLogin(args: string[]): Promise<void> {
       `\n로그인하면 이용약관(${config.apiBaseUrl}/terms)과 개인정보처리방침(${config.apiBaseUrl}/privacy)에 동의하는 것으로 간주됩니다.`,
     );
     token = (await loginViaLoopback(config.apiBaseUrl, provider)) ?? undefined;
+    if (!token && quiet) {
+      console.log(
+        "✗ 로그인이 완료되지 않았습니다 (제한 시간 3분). 터미널에서 `pinglet login`으로 다시 시도하세요.",
+      );
+      return;
+    }
     if (!token) {
       // SSH 등 브라우저와 터미널이 다른 기계인 경우를 위한 폴백.
       console.log(
@@ -138,7 +147,7 @@ export async function runLogin(args: string[]): Promise<void> {
 
   if (!token) {
     console.log("✗ token이 비어 있습니다.");
-    process.exitCode = 1;
+    if (!quiet) process.exitCode = 1;
     return;
   }
 

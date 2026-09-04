@@ -36,7 +36,9 @@ npm install -g pinglet-cli && pinglet install
 Claude Code セッションの中からそのまま:
 
 ```
+> /pinglet-login                      # 初回のみ — ブラウザで GitHub または Google ログイン
 > /pinglet 今日もビルドが緑でありますように
+> /pinglet-logout                     # このマシンのログアウト
 ```
 
 またはターミナルから:

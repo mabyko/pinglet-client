@@ -47,12 +47,16 @@ export async function runPost(args: string[]): Promise<void> {
     switch (result.error) {
       case "LOGIN_REQUIRED":
         console.log(
-          "✗ 메시지 작성에는 로그인(GitHub 또는 Google)이 필요합니다. `pinglet login`을 실행하세요 (읽기는 로그인 없이 가능).",
+          quiet
+            ? "✗ 메시지 작성에는 로그인(GitHub 또는 Google)이 필요합니다. `/pinglet-login`을 실행하세요 (읽기는 로그인 없이 가능)."
+            : "✗ 메시지 작성에는 로그인(GitHub 또는 Google)이 필요합니다. `pinglet login`을 실행하세요 (읽기는 로그인 없이 가능).",
         );
         break;
       case "UNAUTHORIZED":
         console.log(
-          "✗ 로그인이 만료됐습니다. `pinglet login`으로 다시 로그인하세요.",
+          quiet
+            ? "✗ 로그인이 만료됐습니다. `/pinglet-login`으로 다시 로그인하세요."
+            : "✗ 로그인이 만료됐습니다. `pinglet login`으로 다시 로그인하세요.",
         );
         break;
       case "RATE_LIMITED":
