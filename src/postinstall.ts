@@ -1,4 +1,5 @@
 import { runInstall } from "./commands/install";
+import { t } from "./i18n";
 
 /**
  * npm install -g pinglet-cli 직후 자동으로 `pinglet install`을 수행한다.
@@ -10,14 +11,12 @@ import { runInstall } from "./commands/install";
  */
 async function main(): Promise<void> {
   if (process.env.npm_config_global !== "true") return;
-  console.log("\npinglet: 첫 설정을 자동으로 진행합니다 (`pinglet install`)");
+  console.log(t("postinstall.start"));
   await runInstall([]);
 }
 
 main()
   .catch(() => {
-    console.log(
-      "pinglet: 자동 설정에 실패했습니다. `pinglet install`을 직접 실행해 주세요.",
-    );
+    console.log(t("postinstall.failed"));
   })
   .finally(() => process.exit(0));

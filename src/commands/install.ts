@@ -9,6 +9,7 @@ import {
 } from "../adapters/claude";
 import { detectCodex, installCodexIntegration } from "../adapters/codex";
 import { AgentType } from "../types";
+import { t } from "../i18n";
 
 /**
  * 기존 설정 교체 확인. Enter 또는 y면 진행(기본 Yes — 설치 의도가 명확하므로).
@@ -55,23 +56,19 @@ export async function runInstall(args: string[]): Promise<void> {
   if (wantCodex) {
     console.log(hasCodex ? "✓ Codex detected" : "○ Codex not found");
   } else if (detectCodex()) {
-    console.log(
-      "○ Codex 감지됨 — OS 알림 방식이라 기본 설치에서 제외합니다 (원하면 pinglet install --codex)",
-    );
+    console.log(t("install.codexOptOut"));
   }
 
   if (!hasClaude && !hasCodex) {
-    console.log("\n설치할 대상이 없습니다. Claude Code 또는 Codex를 먼저 설치해 주세요.");
+    console.log(t("install.noTarget"));
     process.exitCode = 1;
     return;
   }
 
   const online = await checkHealth(config);
   if (!online) {
-    console.log(
-      `○ Pinglet 서버(${config.apiBaseUrl})에 연결할 수 없어 오프라인 모드로 설치합니다.`,
-    );
-    console.log("  서버 등록과 feed 수신은 온라인 상태가 되면 자동으로 재시도됩니다.");
+    console.log(t("install.offline", { api: config.apiBaseUrl }));
+    console.log(t("install.offlineNote"));
   }
 
   const register = async (agentType: AgentType) => {
@@ -87,9 +84,7 @@ export async function runInstall(args: string[]): Promise<void> {
     await register("CLAUDE");
     let result = installClaudeIntegration(config, { force });
     if (!result.ok && result.needsForce) {
-      const yes = await confirmReplace(
-        "  기존 statusLine 설정이 있습니다. 백업 후 교체할까요? (uninstall 시 복원) (Y/n) ",
-      );
+      const yes = await confirmReplace(t("install.askReplaceStatusLine"));
       if (yes) result = installClaudeIntegration(config, { force: true });
     }
     console.log(
@@ -103,9 +98,7 @@ export async function runInstall(args: string[]): Promise<void> {
     await register("CODEX");
     let result = installCodexIntegration(config, { force });
     if (!result.ok && result.needsForce) {
-      const yes = await confirmReplace(
-        "  기존 notify 설정이 있습니다. 백업 후 교체할까요? (uninstall 시 복원) (Y/n) ",
-      );
+      const yes = await confirmReplace(t("install.askReplaceNotify"));
       if (yes) result = installCodexIntegration(config, { force: true });
     }
     console.log(
@@ -132,9 +125,9 @@ export async function runInstall(args: string[]): Promise<void> {
 
   const targets = [hasClaude && "claude", hasCodex && "codex"]
     .filter(Boolean)
-    .join(" 또는 ");
-  console.log(`\n설치 완료! 평소처럼 ${targets}를 실행하면 Ping이 표시됩니다.`);
-  console.log("  상태 확인:   pinglet doctor");
-  console.log('  메시지 작성: pinglet login 후 pinglet post "메시지"');
-  console.log("  계정 연결:   pinglet login  (메시지 작성/반응에 필요)");
+    .join(t("install.or"));
+  console.log(t("install.done", { targets }));
+  console.log(t("install.doneDoctor"));
+  console.log(t("install.donePost"));
+  console.log(t("install.doneLogin"));
 }

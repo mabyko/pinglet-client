@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { t } from "../i18n";
 import * as os from "os";
 import * as path from "path";
 import { execFileSync } from "child_process";
@@ -96,7 +97,7 @@ export function installCodexIntegration(
     return {
       ok: false,
       needsForce: true,
-      reason: "기존 notify 설정이 있습니다 (백업 후 교체하려면 --force).",
+      reason: t("codex.existingNotify"),
     };
   }
 

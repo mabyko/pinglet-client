@@ -1,4 +1,5 @@
 import { loadConfig, saveConfig } from "../config";
+import { t } from "../i18n";
 
 /**
  * `pinglet logout` — 로컬에 저장된 로그인 토큰만 지운다.
@@ -8,10 +9,10 @@ import { loadConfig, saveConfig } from "../config";
 export function runLogout(): void {
   const config = loadConfig();
   if (!config.userToken) {
-    console.log("○ 로그인 상태가 아닙니다.");
+    console.log(t("logout.notLoggedIn"));
     return;
   }
   delete config.userToken;
   saveConfig(config);
-  console.log("✓ 로그아웃했습니다. 읽기는 계속 되고, 메시지 작성은 `pinglet login` 후 가능합니다.");
+  console.log(t("logout.done"));
 }

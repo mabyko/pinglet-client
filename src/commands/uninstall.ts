@@ -2,6 +2,7 @@ import * as fs from "fs";
 import { PINGLET_DIR, loadConfig } from "../config";
 import { uninstallClaudeIntegration } from "../adapters/claude";
 import { uninstallCodexIntegration } from "../adapters/codex";
+import { t } from "../i18n";
 
 export function runUninstall(args: string[]): void {
   const config = loadConfig();
@@ -23,6 +24,6 @@ export function runUninstall(args: string[]): void {
     fs.rmSync(PINGLET_DIR, { recursive: true, force: true });
     console.log("✓ ~/.pinglet removed (config / cache / event queue)");
   } else {
-    console.log("○ ~/.pinglet은 유지됩니다. 전부 지우려면 --purge를 사용하세요.");
+    console.log(t("uninstall.keep"));
   }
 }

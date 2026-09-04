@@ -116,3 +116,10 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   state.json     # 현재 표시 중 메시지, seen 카운트, flush/refresh 타이밍
   events.jsonl   # Local Event Queue (append-only)
 ```
+
+## 안내 문구 언어
+
+CLI가 출력하는 안내 문구는 `src/i18n.ts`의 테이블(ko/ja/en)에서 가져온다.
+언어 판정은 statusline과 같은 `detectLocale()`(시스템 언어 → 타임존 순)이며,
+한국어·일본어 외에는 전부 영어다. 새 문구를 추가할 때는 세 언어 모두 채운다.
+슬래시 명령 파일의 `description`도 설치 시점의 언어로 생성된다.

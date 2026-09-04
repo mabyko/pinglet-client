@@ -4,6 +4,7 @@ import { AddressInfo } from "net";
 import * as readline from "readline";
 import { loadConfig, saveConfig } from "../config";
 import { linkInstallation } from "../api";
+import { currentLocale, t } from "../i18n";
 
 const LOGIN_TIMEOUT_MS = 180_000;
 
@@ -36,19 +37,14 @@ function openBrowser(url: string): boolean {
 }
 
 const RESULT_HTML = (ok: boolean) => `<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><title>Pinglet</title>
+<html lang="${currentLocale()}"><head><meta charset="utf-8"><title>Pinglet</title>
 <style>body{font-family:-apple-system,sans-serif;display:flex;align-items:center;
 justify-content:center;height:100vh;margin:0;background:#0f1115;color:#e6e9ef}
 div{text-align:center}p{color:#8b93a3}</style></head><body><div>
-<h1>${ok ? "💌 로그인 완료" : "✗ 로그인 실패"}</h1>
-<p>${ok ? "이 창을 닫고 터미널로 돌아가세요." : "터미널에서 다시 시도해 주세요."}</p>
+<h1>${ok ? t("login.html.ok") : t("login.html.fail")}</h1>
+<p>${ok ? t("login.html.okSub") : t("login.html.failSub")}</p>
 </div></body></html>`;
 
-/**
- * 루프백 로그인: 일회용 로컬 서버를 띄우고 브라우저에서 OAuth를 마치면
- * 서버가 http://127.0.0.1:{port}/callback?token=... 으로 토큰을 넘겨준다.
- * 타임아웃/실패 시 null — 호출부가 수동 붙여넣기로 폴백한다.
- */
 type Provider = "github" | "google";
 
 /** provider가 없으면 백엔드의 로그인 방식 선택 페이지(/auth/login)를 연다. */
@@ -56,9 +52,22 @@ function loginPath(provider?: Provider): string {
   return provider ? `/auth/${provider}` : "/auth/login";
 }
 
+function providerLabel(provider?: Provider): string {
+  if (provider === "google") return "Google";
+  if (provider === "github") return "GitHub";
+  return t("login.anyProvider");
+}
+
+/**
+ * 루프백 로그인: 일회용 로컬 서버를 띄우고 브라우저에서 OAuth를 마치면
+ * 서버가 http://127.0.0.1:{port}/callback?token=... 으로 토큰을 넘겨준다.
+ * 타임아웃/실패 시 null — 호출부가 수동 붙여넣기로 폴백한다.
+ * quiet(슬래시 명령)에서는 출력이 완료 후에야 한꺼번에 보이므로 진행 안내를 찍지 않는다.
+ */
 function loginViaLoopback(
   apiBaseUrl: string,
-  provider?: Provider,
+  provider: Provider | undefined,
+  quiet: boolean,
 ): Promise<string | null> {
   return new Promise((resolve) => {
     let finished = false;
@@ -92,12 +101,10 @@ function loginViaLoopback(
     server.listen(0, "127.0.0.1", () => {
       const port = (server.address() as AddressInfo).port;
       const url = `${apiBaseUrl}${loginPath(provider)}?cli_port=${port}`;
-      console.log(
-        provider
-          ? `브라우저에서 ${provider === "google" ? "Google" : "GitHub"} 로그인을 완료해 주세요…`
-          : "브라우저에서 GitHub 또는 Google 로그인을 완료해 주세요…",
-      );
-      console.log(`  ${url}\n`);
+      if (!quiet) {
+        console.log(t("login.openBrowser", { provider: providerLabel(provider) }));
+        console.log(`  ${url}\n`);
+      }
       openBrowser(url);
     });
   });
@@ -108,6 +115,7 @@ function loginViaLoopback(
  * `--github` / `--google`로 방식을 고정하고, 없으면 브라우저에서 고른다.
  * `--quiet`: /pinglet-login slash command용 — 터미널 입력을 받을 수 없으므로
  * 붙여넣기 폴백 대신 안내만 출력하고, 실패해도 exit 0 (에러 덤프 방지).
+ * 약관 동의 안내는 브라우저의 로그인 선택 페이지가 대신 보여준다.
  */
 export async function runLogin(args: string[]): Promise<void> {
   const config = loadConfig();
@@ -125,42 +133,37 @@ export async function runLogin(args: string[]): Promise<void> {
       : undefined;
 
   if (!token) {
-    console.log(
-      `\n로그인하면 이용약관(${config.apiBaseUrl}/terms)과 개인정보처리방침(${config.apiBaseUrl}/privacy)에 동의하는 것으로 간주됩니다.`,
-    );
-    token = (await loginViaLoopback(config.apiBaseUrl, provider)) ?? undefined;
+    if (!quiet) console.log(t("login.terms", { api: config.apiBaseUrl }));
+    token =
+      (await loginViaLoopback(config.apiBaseUrl, provider, quiet)) ?? undefined;
     if (!token && quiet) {
-      console.log(
-        "✗ 로그인이 완료되지 않았습니다 (제한 시간 3분). 터미널에서 `pinglet login`으로 다시 시도하세요.",
-      );
+      console.log(t("login.quietFailed"));
       return;
     }
     if (!token) {
       // SSH 등 브라우저와 터미널이 다른 기계인 경우를 위한 폴백.
-      console.log(
-        "자동 로그인에 실패했습니다. 아래 URL에서 로그인 후 응답 JSON의 token 값을 붙여넣어 주세요.",
-      );
+      console.log(t("login.fallback"));
       console.log(`  ${config.apiBaseUrl}${loginPath(provider)}\n`);
       token = (await prompt("token: ")).trim();
     }
   }
 
   if (!token) {
-    console.log("✗ token이 비어 있습니다.");
+    console.log(t("login.emptyToken"));
     if (!quiet) process.exitCode = 1;
     return;
   }
 
   config.userToken = token;
   saveConfig(config);
-  console.log("✓ 로그인 정보 저장 완료");
+  console.log(t("login.saved"));
 
   for (const [agentType, record] of Object.entries(config.installations)) {
     const linked = await linkInstallation(config, record.token);
     console.log(
       linked
-        ? `✓ ${agentType} installation을 계정에 연결했습니다`
-        : `○ ${agentType} installation 연결 실패 — 서버 연결 후 다시 시도하세요`,
+        ? t("login.linked", { agent: agentType })
+        : t("login.linkFailed", { agent: agentType }),
     );
   }
 }

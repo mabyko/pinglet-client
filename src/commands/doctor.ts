@@ -8,6 +8,7 @@ import {
   spinnerVerbsStatus,
 } from "../adapters/claude";
 import { detectCodex, isCodexIntegrationInstalled } from "../adapters/codex";
+import { t } from "../i18n";
 
 const ok = (label: string) => console.log(`✓ ${label}`);
 const warn = (label: string) => console.log(`○ ${label}`);
@@ -19,7 +20,7 @@ export async function runDoctor(): Promise<void> {
 
   const nodeMajor = Number(process.versions.node.split(".")[0]);
   if (nodeMajor >= 18) ok(`Node.js ${process.versions.node}`);
-  else bad(`Node.js ${process.versions.node} — 18 이상이 필요합니다`);
+  else bad(t("doctor.nodeOld", { version: process.versions.node }));
 
   // Claude
   if (detectClaude()) {
@@ -28,11 +29,11 @@ export async function runDoctor(): Promise<void> {
       ok("Claude integration installed");
       const spinner = spinnerVerbsStatus();
       if (spinner.count > 0) {
-        ok(`Spinner 메시지: ${spinner.count}개 등록됨`);
+        ok(t("doctor.spinnerCount", { n: spinner.count }));
       } else {
-        warn("Spinner 메시지 미등록 — `pinglet refresh` 실행");
+        warn(t("doctor.spinnerMissing"));
       }
-    } else warn("Claude integration not installed — `pinglet install` 실행");
+    } else warn(t("doctor.claudeNotInstalled"));
   } else {
     warn("Claude Code not found");
   }
@@ -41,7 +42,7 @@ export async function runDoctor(): Promise<void> {
   if (detectCodex()) {
     ok("Codex detected");
     if (isCodexIntegrationInstalled()) ok("Codex integration installed");
-    else warn("Codex integration not installed — `pinglet install` 실행");
+    else warn(t("doctor.codexNotInstalled"));
   } else {
     warn("Codex not found");
   }
@@ -52,28 +53,28 @@ export async function runDoctor(): Promise<void> {
     if (record) ok(`${agentType} installation registered (${record.installationId})`);
   }
   if (Object.keys(config.installations).length === 0) {
-    warn("서버에 등록된 installation이 없습니다 (오프라인 설치 상태)");
+    warn(t("doctor.noInstallation"));
   }
 
   // 로컬 캐시 / 큐
   const messages = loadFeedMessages();
   const age = feedAgeMs();
   if (messages.length === 0) {
-    warn("Feed cache 비어 있음 — 기본 spinner로 표시 중 (서버 feed 수신 후 Ping 표시)");
+    warn(t("doctor.feedEmpty"));
   } else {
     const ageMin = age === null ? "?" : Math.round(age / 60_000);
-    ok(`Feed cache: ${messages.length}개 (${ageMin}분 전 갱신)`);
+    ok(t("doctor.feedCache", { n: messages.length, min: ageMin }));
   }
   const queued = countEvents();
-  if (queued < 200) ok(`Event queue: ${queued}개 대기`);
-  else warn(`Event queue: ${queued}개 대기 — 서버 전송이 밀려 있습니다`);
+  if (queued < 200) ok(t("doctor.queue", { n: queued }));
+  else warn(t("doctor.queueBacklog", { n: queued }));
 
   // API
   const online = await checkHealth(config);
   if (online) ok(`API reachable (${config.apiBaseUrl})`);
-  else warn(`API unreachable (${config.apiBaseUrl}) — 오프라인 모드로 동작 중`);
+  else warn(t("doctor.apiUnreachable", { api: config.apiBaseUrl }));
 
-  if (config.userToken) ok("로그인됨");
-  else warn("로그인 안 됨 — 읽기는 가능, 메시지 작성/반응은 `pinglet login` 후");
+  if (config.userToken) ok(t("doctor.loggedIn"));
+  else warn(t("doctor.notLoggedIn"));
   console.log("");
 }

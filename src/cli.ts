@@ -11,28 +11,9 @@ import { runFlush } from "./commands/flush";
 import { runRefresh } from "./commands/refresh";
 import { runPing } from "./commands/ping";
 import { runPost } from "./commands/post";
+import { t } from "./i18n";
 
-const HELP = `pinglet v${VERSION} — AI가 생각하는 동안 만나는 개발자 메시지 네트워크
-
-사용법: pinglet <command>
-
-  install [--api <url>] [--force]   Claude Code integration 설치
-          [--claude | --codex]      Codex는 OS 알림 방식이라 --codex로 opt-in (experimental)
-  uninstall [--purge]               integration 제거 (--purge: ~/.pinglet까지 삭제)
-  login [--github | --google]       계정 연결 (GitHub 또는 Google, 생략 시 브라우저에서 선택)
-        [--token <jwt>]
-  logout                            로그인 해제 (설치·캐시는 유지)
-                                    (Claude Code 안에서는 /pinglet-login, /pinglet-logout)
-  post "메시지" [--category <c>]     메시지 작성 (로그인 필요, 읽기는 익명 가능)
-  doctor                            설치/캐시/서버 상태 진단
-  ping                              메시지 미리보기
-
-내부 명령 (integration이 호출):
-  statusline                        Claude Code statusLine hook
-  notify                            Codex notify hook
-  flush                             이벤트 큐 batch 전송
-  refresh                           feed 캐시 갱신 + heartbeat
-`;
+const HELP = t("cli.help", { version: VERSION });
 
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
@@ -81,7 +62,7 @@ async function main(): Promise<void> {
       if (!command) {
         const config = loadConfig();
         if (!config.adapters.claude && !config.adapters.codex) {
-          console.log("pinglet: 아직 설정 전입니다 — 첫 설정을 시작합니다.");
+          console.log(t("cli.firstSetup"));
           await runInstall([]);
           break;
         }

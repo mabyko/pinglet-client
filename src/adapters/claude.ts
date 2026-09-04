@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { t } from "../i18n";
 import * as os from "os";
 import * as path from "path";
 import { execFileSync } from "child_process";
@@ -82,38 +83,38 @@ function installSlashCommand(): void {
   const cli = cliPath();
   const files: Record<string, string> = {
     "pinglet.md": `---
-description: 메시지를 Pinglet에 등록해 다른 개발자들의 터미널에 표시
+description: ${t("slash.postDesc")}
 allowed-tools: Bash(node:*)
 ---
 <!-- ${COMMAND_MARKER} -->
 
-등록 결과: !\`node "${cli}" post --quiet "$ARGUMENTS"\`
+Result: !\`node "${cli}" post --quiet "$ARGUMENTS"\`
 
-위 등록 결과 줄을 아무것도 덧붙이거나 바꾸지 말고 그대로 한 줄만 출력하세요.
-다른 설명, 안내, 작업을 일절 하지 마세요.
+Output the result line above exactly as-is, as a single line, without adding or changing anything.
+Do not add any explanation, guidance, or perform any other action.
 `,
     "pinglet-login.md": `---
-description: Pinglet 계정 연결 (브라우저에서 GitHub 또는 Google 로그인, --github/--google로 지정 가능)
+description: ${t("slash.loginDesc")}
 allowed-tools: Bash(node:*)
 ---
 <!-- ${COMMAND_MARKER} -->
 
-로그인 결과:
+Result:
 !\`node "${cli}" login --quiet $ARGUMENTS\`
 
-위 로그인 결과를 아무것도 덧붙이거나 바꾸지 말고 그대로 출력하세요.
-다른 설명, 안내, 작업을 일절 하지 마세요.
+Output the result above exactly as-is, without adding or changing anything.
+Do not add any explanation, guidance, or perform any other action.
 `,
     "pinglet-logout.md": `---
-description: Pinglet 로그인 해제 (이 기기의 로그인 토큰만 제거)
+description: ${t("slash.logoutDesc")}
 allowed-tools: Bash(node:*)
 ---
 <!-- ${COMMAND_MARKER} -->
 
-로그아웃 결과: !\`node "${cli}" logout\`
+Result: !\`node "${cli}" logout\`
 
-위 로그아웃 결과 줄을 아무것도 덧붙이거나 바꾸지 말고 그대로 한 줄만 출력하세요.
-다른 설명, 안내, 작업을 일절 하지 마세요.
+Output the result line above exactly as-is, as a single line, without adding or changing anything.
+Do not add any explanation, guidance, or perform any other action.
 `,
   };
   for (const [name, body] of Object.entries(files)) {
@@ -385,8 +386,7 @@ export function installClaudeIntegration(
       return {
         ok: false,
         needsForce: true,
-        reason:
-          "기존 statusLine 설정이 있습니다 (백업 후 교체하려면 --force).",
+        reason: t("claude.existingStatusLine"),
       };
     }
 
@@ -423,8 +423,7 @@ export function installClaudeIntegration(
   }
   return {
     ok: false,
-    reason:
-      "settings.json이 계속 변경되고 있어 설치하지 못했습니다. 잠시 후 다시 시도하세요.",
+    reason: t("claude.settingsBusy"),
   };
 }
 
