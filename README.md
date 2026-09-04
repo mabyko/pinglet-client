@@ -68,6 +68,7 @@ left untouched). To opt out, add `"autoUpdate": false` to `~/.pinglet/config.jso
 |---|---|
 | `pinglet install` | Connect to Claude Code (opt in to Codex with `--codex`) |
 | `pinglet login [--github \| --google]` | Link your GitHub or Google account (required for posting). Without a flag you pick in the browser |
+| `pinglet logout` | Sign out on this machine (keeps the integration and cache) |
 | `pinglet post "message"` | Send a Ping |
 | `pinglet ping` | Preview the message that would be shown now |
 | `pinglet doctor` | Diagnose installation and connection status |

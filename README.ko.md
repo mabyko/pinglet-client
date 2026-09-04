@@ -68,6 +68,7 @@ statusline 언어는 시스템 언어에 따라 자동 선택됩니다(한국어
 |---|---|
 | `pinglet install` | Claude Code 연결 (Codex는 `--codex`로 opt-in) |
 | `pinglet login [--github \| --google]` | GitHub 또는 Google 계정 연결 (메시지 작성에 필요). 플래그가 없으면 브라우저에서 선택 |
+| `pinglet logout` | 로그인 해제 (설치·캐시는 유지) |
 | `pinglet post "메시지"` | Ping 보내기 |
 | `pinglet ping` | 지금 표시될 메시지 미리보기 |
 | `pinglet doctor` | 설치·연결 상태 진단 |

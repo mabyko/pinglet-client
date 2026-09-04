@@ -4,6 +4,7 @@ import { runInstall } from "./commands/install";
 import { runUninstall } from "./commands/uninstall";
 import { runDoctor } from "./commands/doctor";
 import { runLogin } from "./commands/login";
+import { runLogout } from "./commands/logout";
 import { runStatusline } from "./commands/statusline";
 import { runNotify } from "./commands/notify";
 import { runFlush } from "./commands/flush";
@@ -20,6 +21,7 @@ const HELP = `pinglet v${VERSION} — AI가 생각하는 동안 만나는 개발
   uninstall [--purge]               integration 제거 (--purge: ~/.pinglet까지 삭제)
   login [--github | --google]       계정 연결 (GitHub 또는 Google, 생략 시 브라우저에서 선택)
         [--token <jwt>]
+  logout                            로그인 해제 (설치·캐시는 유지)
   post "메시지" [--category <c>]     메시지 작성 (로그인 필요, 읽기는 익명 가능)
   doctor                            설치/캐시/서버 상태 진단
   ping                              메시지 미리보기
@@ -43,6 +45,9 @@ async function main(): Promise<void> {
       break;
     case "login":
       await runLogin(rest);
+      break;
+    case "logout":
+      runLogout();
       break;
     case "doctor":
       await runDoctor();

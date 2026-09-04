@@ -68,6 +68,7 @@ statusline の言語はシステム言語に応じて自動選択されます(�
 |---|---|
 | `pinglet install` | Claude Code に接続（Codex は `--codex` でオプトイン） |
 | `pinglet login [--github \| --google]` | GitHub または Google アカウントを連携（投稿に必要）。フラグ省略時はブラウザで選択 |
+| `pinglet logout` | ログアウト（連携設定・キャッシュは維持） |
 | `pinglet post "メッセージ"` | Ping を送る |
 | `pinglet ping` | いま表示されるメッセージをプレビュー |
 | `pinglet doctor` | インストール・接続状態を診断 |

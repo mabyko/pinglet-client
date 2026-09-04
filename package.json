@@ -1,6 +1,6 @@
 {
   "name": "pinglet-cli",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Short messages from other developers shown in your Claude Code spinner while the AI thinks — zero tokens, never reads your code. Claude Code / Codex integration",
   "license": "MIT",
   "repository": {
