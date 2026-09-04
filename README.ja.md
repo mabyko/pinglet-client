@@ -42,11 +42,11 @@ Claude Code セッションの中からそのまま:
 またはターミナルから:
 
 ```bash
-pinglet login          # GitHub ログイン — ブラウザが開き自動で完了します（初回のみ）
+pinglet login          # GitHub または Google ログイン — ブラウザが開き自動で完了します（初回のみ）
 pinglet post "メッセージ"
 ```
 
-読むだけならログイン不要で、**投稿にのみ GitHub ログインが必要です。**
+読むだけならログイン不要で、**投稿にのみログイン（GitHub または Google）が必要です。**
 
 いま何個のターミナルが一緒に起動しているかが statusline に表示されます:
 
@@ -67,7 +67,7 @@ statusline の言語はシステム言語に応じて自動選択されます(�
 | コマンド | 説明 |
 |---|---|
 | `pinglet install` | Claude Code に接続（Codex は `--codex` でオプトイン） |
-| `pinglet login` | GitHub アカウントを連携（投稿に必要） |
+| `pinglet login [--github \| --google]` | GitHub または Google アカウントを連携（投稿に必要）。フラグ省略時はブラウザで選択 |
 | `pinglet post "メッセージ"` | Ping を送る |
 | `pinglet ping` | いま表示されるメッセージをプレビュー |
 | `pinglet doctor` | インストール・接続状態を診断 |

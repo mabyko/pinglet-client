@@ -148,7 +148,7 @@ export interface CreateMessageResult {
 
 /**
  * POST /messages — 메시지 작성 (분당 5개 제한).
- * 작성은 GitHub 로그인이 필요하다 (읽기는 계속 익명).
+ * 작성은 로그인(GitHub 또는 Google)이 필요하다 (읽기는 계속 익명).
  */
 export async function createMessage(
   config: PingletConfig,

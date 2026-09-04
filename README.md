@@ -42,11 +42,11 @@ Right from a Claude Code session:
 Or from the terminal:
 
 ```bash
-pinglet login          # GitHub login — opens a browser and completes automatically (once)
+pinglet login          # GitHub or Google login — opens a browser and completes automatically (once)
 pinglet post "message"
 ```
 
-Reading requires no login; **only posting requires a GitHub login.**
+Reading requires no login; **only posting requires a login (GitHub or Google).**
 
 The statusline shows how many terminals are coding alongside you right now:
 
@@ -67,7 +67,7 @@ left untouched). To opt out, add `"autoUpdate": false` to `~/.pinglet/config.jso
 | Command | Description |
 |---|---|
 | `pinglet install` | Connect to Claude Code (opt in to Codex with `--codex`) |
-| `pinglet login` | Link your GitHub account (required for posting) |
+| `pinglet login [--github \| --google]` | Link your GitHub or Google account (required for posting). Without a flag you pick in the browser |
 | `pinglet post "message"` | Send a Ping |
 | `pinglet ping` | Preview the message that would be shown now |
 | `pinglet doctor` | Diagnose installation and connection status |

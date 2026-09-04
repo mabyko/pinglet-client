@@ -18,8 +18,9 @@ const HELP = `pinglet v${VERSION} — AI가 생각하는 동안 만나는 개발
   install [--api <url>] [--force]   Claude Code integration 설치
           [--claude | --codex]      Codex는 OS 알림 방식이라 --codex로 opt-in (experimental)
   uninstall [--purge]               integration 제거 (--purge: ~/.pinglet까지 삭제)
-  login [--token <jwt>]             GitHub 계정 연결
-  post "메시지" [--category <c>]     메시지 작성 (GitHub 로그인 필요, 읽기는 익명 가능)
+  login [--github | --google]       계정 연결 (GitHub 또는 Google, 생략 시 브라우저에서 선택)
+        [--token <jwt>]
+  post "메시지" [--category <c>]     메시지 작성 (로그인 필요, 읽기는 익명 가능)
   doctor                            설치/캐시/서버 상태 진단
   ping                              메시지 미리보기
 

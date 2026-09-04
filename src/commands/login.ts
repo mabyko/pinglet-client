@@ -49,7 +49,17 @@ div{text-align:center}p{color:#8b93a3}</style></head><body><div>
  * 서버가 http://127.0.0.1:{port}/callback?token=... 으로 토큰을 넘겨준다.
  * 타임아웃/실패 시 null — 호출부가 수동 붙여넣기로 폴백한다.
  */
-function loginViaLoopback(apiBaseUrl: string): Promise<string | null> {
+type Provider = "github" | "google";
+
+/** provider가 없으면 백엔드의 로그인 방식 선택 페이지(/auth/login)를 연다. */
+function loginPath(provider?: Provider): string {
+  return provider ? `/auth/${provider}` : "/auth/login";
+}
+
+function loginViaLoopback(
+  apiBaseUrl: string,
+  provider?: Provider,
+): Promise<string | null> {
   return new Promise((resolve) => {
     let finished = false;
     const done = (token: string | null) => {
@@ -81,15 +91,22 @@ function loginViaLoopback(apiBaseUrl: string): Promise<string | null> {
 
     server.listen(0, "127.0.0.1", () => {
       const port = (server.address() as AddressInfo).port;
-      const url = `${apiBaseUrl}/auth/github?cli_port=${port}`;
-      console.log("브라우저에서 GitHub 로그인을 완료해 주세요…");
+      const url = `${apiBaseUrl}${loginPath(provider)}?cli_port=${port}`;
+      console.log(
+        provider
+          ? `브라우저에서 ${provider === "google" ? "Google" : "GitHub"} 로그인을 완료해 주세요…`
+          : "브라우저에서 GitHub 또는 Google 로그인을 완료해 주세요…",
+      );
       console.log(`  ${url}\n`);
       openBrowser(url);
     });
   });
 }
 
-/** GitHub OAuth 로그인 — 루프백 자동 수신, 실패 시 수동 붙여넣기 폴백. */
+/**
+ * 소셜 로그인(GitHub/Google) — 루프백 자동 수신, 실패 시 수동 붙여넣기 폴백.
+ * `--github` / `--google`로 방식을 고정하고, 없으면 브라우저에서 고른다.
+ */
 export async function runLogin(args: string[]): Promise<void> {
   const config = loadConfig();
 
@@ -98,18 +115,23 @@ export async function runLogin(args: string[]): Promise<void> {
   if (tokenIndex !== -1 && args[tokenIndex + 1]) {
     token = args[tokenIndex + 1];
   }
+  const provider: Provider | undefined = args.includes("--google")
+    ? "google"
+    : args.includes("--github")
+      ? "github"
+      : undefined;
 
   if (!token) {
     console.log(
       `\n로그인하면 이용약관(${config.apiBaseUrl}/terms)과 개인정보처리방침(${config.apiBaseUrl}/privacy)에 동의하는 것으로 간주됩니다.`,
     );
-    token = (await loginViaLoopback(config.apiBaseUrl)) ?? undefined;
+    token = (await loginViaLoopback(config.apiBaseUrl, provider)) ?? undefined;
     if (!token) {
       // SSH 등 브라우저와 터미널이 다른 기계인 경우를 위한 폴백.
       console.log(
         "자동 로그인에 실패했습니다. 아래 URL에서 로그인 후 응답 JSON의 token 값을 붙여넣어 주세요.",
       );
-      console.log(`  ${config.apiBaseUrl}/auth/github\n`);
+      console.log(`  ${config.apiBaseUrl}${loginPath(provider)}\n`);
       token = (await prompt("token: ")).trim();
     }
   }
