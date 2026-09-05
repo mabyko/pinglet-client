@@ -7,6 +7,7 @@ import { PingletConfig, cliPath, saveConfig } from "../config";
 import { loadFeedMessages } from "../cache";
 import { formatPing } from "../render";
 import { FeedMessage } from "../types";
+import { isMissing } from "../storage";
 
 const CLAUDE_DIR = path.join(os.homedir(), ".claude");
 const SETTINGS_PATH = path.join(CLAUDE_DIR, "settings.json");
@@ -131,8 +132,8 @@ function uninstallSlashCommand(): boolean {
       if (!fs.readFileSync(file, "utf8").includes(COMMAND_MARKER)) continue;
       fs.unlinkSync(file);
       removed = true;
-    } catch {
-      // 없거나 읽을 수 없는 파일은 건너뛴다.
+    } catch (error) {
+      if (!isMissing(error)) throw error;
     }
   }
   return removed;
@@ -191,8 +192,9 @@ function readSettings(): ClaudeSettings {
 function settingsMtimeMs(): number | null {
   try {
     return fs.statSync(SETTINGS_PATH).mtimeMs;
-  } catch {
-    return null; // 파일 없음
+  } catch (error) {
+    if (!isMissing(error)) throw error;
+    return null;
   }
 }
 
@@ -202,14 +204,17 @@ function readSettingsWithMtime(): {
 } {
   const mtimeMs = settingsMtimeMs();
   try {
+    const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8"));
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+      throw new Error("Expected a settings object");
+    }
     return {
-      settings: JSON.parse(
-        fs.readFileSync(SETTINGS_PATH, "utf8"),
-      ) as ClaudeSettings,
+      settings: settings as ClaudeSettings,
       mtimeMs,
     };
-  } catch {
-    return { settings: {}, mtimeMs };
+  } catch (error) {
+    if (isMissing(error) && mtimeMs === null) return { settings: {}, mtimeMs };
+    throw new Error(`Cannot read ${SETTINGS_PATH}; original settings preserved.`, { cause: error });
   }
 }
 
@@ -232,6 +237,10 @@ function writeSettings(
   const tmp = `${SETTINGS_PATH}.pinglet-tmp.${process.pid}`;
   try {
     fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + "\n");
+    if (settingsMtimeMs() !== expectedMtimeMs) {
+      fs.unlinkSync(tmp);
+      return false;
+    }
     fs.renameSync(tmp, SETTINGS_PATH);
   } catch (error) {
     // rename 전에 실패하면 tmp가 남는다 — 이름이 pid별로 달라 방치하면 쌓인다.
@@ -280,10 +289,7 @@ function cleanupSpinnerTips(
   } else {
     delete settings.spinnerTipsOverride;
   }
-  if (adapter?.spinnerTipsBackup !== undefined) {
-    delete adapter.spinnerTipsBackup;
-    saveConfig(config);
-  }
+  // Keep the backup until uninstall commits successfully.
   return true;
 }
 
@@ -429,6 +435,7 @@ export function installClaudeIntegration(
 
 export function uninstallClaudeIntegration(config: PingletConfig): boolean {
   let settingsChanged = false;
+  let committed = false;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const { settings, mtimeMs } = readSettingsWithMtime();
@@ -480,9 +487,13 @@ export function uninstallClaudeIntegration(config: PingletConfig): boolean {
       settingsChanged = true;
     }
 
-    if (!settingsChanged) break;
-    if (writeSettings(settings, mtimeMs)) break; // 충돌 시 재읽기 후 재적용
+    if (!settingsChanged || writeSettings(settings, mtimeMs)) {
+      committed = true;
+      break;
+    }
   }
+
+  if (!committed) throw new Error(t("claude.settingsBusy"));
 
   const commandRemoved = uninstallSlashCommand();
 

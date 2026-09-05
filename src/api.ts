@@ -8,7 +8,7 @@ const TIMEOUT_MS = 5000;
 export const MAX_BATCH_SIZE = 200;
 
 async function request<T>(
-  config: PingletConfig,
+  config: Pick<PingletConfig, "apiBaseUrl">,
   method: string,
   apiPath: string,
   options: { token?: string; body?: unknown } = {},
@@ -67,6 +67,7 @@ interface FeedItem {
   authorNickname: string;
   contentType: string;
   category: string | null;
+  expiresAt?: string | null;
 }
 
 /** GET /feed — 로컬 캐시용 메시지 30~50개를 미리 받는다. */
@@ -89,6 +90,7 @@ export async function fetchFeed(
       text: item.text,
       author: item.authorNickname || "익명의 개발자",
       category: item.category,
+      expiresAt: item.expiresAt,
       contentType:
         item.contentType === "SYSTEM" || item.contentType === "SPONSORED"
           ? item.contentType
@@ -154,6 +156,7 @@ export async function createMessage(
   config: PingletConfig,
   text: string,
   category?: string,
+  requestId: string = randomUUID(),
 ): Promise<CreateMessageResult> {
   const token = config.userToken;
   if (!token) return { ok: false, error: "LOGIN_REQUIRED" };
@@ -164,7 +167,7 @@ export async function createMessage(
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ text, ...(category && { category }) }),
+      body: JSON.stringify({ text, requestId, ...(category && { category }) }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (res.status === 401) return { ok: false, error: "UNAUTHORIZED" };
@@ -184,6 +187,33 @@ export async function createMessage(
   } catch {
     return { ok: false, error: "NETWORK" };
   }
+}
+
+export async function validateUserToken(config: Pick<PingletConfig, "apiBaseUrl">, token: string): Promise<boolean> {
+  const user = await request<{ id: string }>(config, "GET", "/users/me", { token });
+  return typeof user?.id === "string" && user.id.length > 0;
+}
+
+/** Revocation/unlink are idempotent. A 401 installation credential is already unusable.
+ * Other failures (including an old server's 404) must not be reported as success.
+ */
+export async function releaseCredential(
+  config: PingletConfig,
+  kind: "user" | "unlink" | "installation",
+  token: string,
+): Promise<boolean> {
+  try {
+    const apiPath = kind === "user" ? "/auth/logout" : kind === "unlink" ? "/installations/unlink" : "/installations/current";
+    const res = await fetch(config.apiBaseUrl + apiPath, {
+      method: kind === "installation" ? "DELETE" : "POST",
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (res.status === 401) return true;
+    if (!res.ok) return false;
+    const body = await res.json() as { revoked?: boolean; unlinked?: boolean };
+    return kind === "unlink" ? body.unlinked === true : body.revoked === true;
+  } catch { return false; }
 }
 
 /**

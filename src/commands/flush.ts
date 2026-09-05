@@ -1,4 +1,5 @@
-import { loadConfig } from "../config";
+import { CONFIG_PATH, loadConfig } from "../config";
+import * as fs from "fs";
 import { MAX_BATCH_SIZE, uploadEventBatch } from "../api";
 import { readEvents, removeEvents } from "../queue";
 import { AgentType } from "../types";
@@ -9,6 +10,7 @@ import { AgentType } from "../types";
  * 재전송 중복은 서버가 eventId로 dedupe한다.
  */
 export async function runFlush(): Promise<void> {
+  if (!fs.existsSync(CONFIG_PATH)) return;
   const config = loadConfig();
   const events = readEvents();
   if (events.length === 0) return;

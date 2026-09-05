@@ -41,7 +41,8 @@ codex    # turn 완료 시 macOS 알림으로 Ping 전달 (experimental)
 | 명령 | 설명 |
 |---|---|
 | `pinglet install [--api <url>] [--force]` | Claude Code / Codex 자동 감지 후 integration 설치 + 서버 등록 + 초기 feed 캐시 |
-| `pinglet uninstall [--purge]` | integration 제거, 기존 설정 복원. `--purge`는 `~/.pinglet`까지 삭제 |
+| `pinglet uninstall [--purge]` | 설정 복원, 서버 설치·사용자 토큰 폐기. 성공한 경우에만 `--purge`로 로컬 데이터 삭제 |
+| `pinglet logout` | 서버 사용자 토큰 폐기, 설치–계정 연결 해제. 연동·익명 읽기 유지 |
 | `pinglet login [--token <jwt>]` | GitHub 로그인 후 익명 설치를 계정에 연결 |
 | `pinglet post "메시지" [--category <c>]` | 메시지 작성 (GitHub 로그인 필요, 읽기는 로그인 없이 가능) |
 | `pinglet doctor` | 설치/캐시/큐/서버 상태 진단 |
@@ -81,8 +82,8 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
 - **Local-first Rendering** — 서버 feed를 30~50개 미리 받아 `~/.pinglet/feed.json`에
   캐시하고, 렌더링 순간에는 로컬 파일만 동기 I/O로 읽는다. 렌더링 path에
   네트워크가 절대 들어가지 않는다.
-- **오프라인 동작** — 서버 미연결 시 시드 메시지로 동작하고, 등록/feed 갱신은
-  백그라운드 `refresh`가 온라인이 되면 자동 재시도한다.
+- **오프라인 동작** — 마지막 갱신으로부터 최대 10분간 캐시를 사용하고,
+  메시지별 `expiresAt`도 확인한다. 이후 기본 spinner로 돌아가며 `refresh`가 갱신을 재시도한다.
 - **DELIVERED / QUALIFIED_IMPRESSION 분리** — 메시지가 spinner에 armed되면
   DELIVERED(설치당 1회), armed된 동안 spinner가 3초 이상 실제로 돌았으면
   QUALIFIED_IMPRESSION(visibleMs 포함)으로 정산한다. "실제로 돌았는지"는
@@ -102,9 +103,12 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
 | `POST /installations` | agent별 익명 설치 등록 → `{installationId, token}` |
 | `GET /feed?limit=50` | 로컬 캐시용 feed 수신 (installation JWT) |
 | `POST /events/batch` | 이벤트 batch 전송 (최대 200개, eventId dedupe) |
-| `POST /messages` | 메시지 작성 (`post` 명령, 유저 JWT 또는 installation JWT) |
+| `POST /messages` | 유저 JWT로 메시지 작성; `requestId`로 중복 요청 방지 |
 | `POST /installations/heartbeat` | lastSeenAt 갱신 |
 | `POST /installations/link` | 로그인 후 설치를 계정에 연결 |
+| `POST /installations/unlink` | installation 토큰으로 이 설치의 계정 연결 해제 |
+| `DELETE /installations/current` | installation 토큰 폐기 (전달 기록은 유지) |
+| `POST /auth/logout` | 현재 사용자 JWT 폐기; 재시도 가능 |
 | `GET /auth/github` | GitHub OAuth 시작 (login 명령이 브라우저로 연다) |
 
 ## 로컬 파일

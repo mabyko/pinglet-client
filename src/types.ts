@@ -8,6 +8,7 @@ export interface FeedMessage {
   text: string;
   author: string;
   category?: string | null;
+  expiresAt?: string | null;
   contentType: "USER" | "SYSTEM" | "SPONSORED";
 }
 

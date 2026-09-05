@@ -19,9 +19,15 @@ import {
  * 서버 feed를 아직 못 받았으면 빈 배열 — Pinglet은 아무것도 표시하지 않고
  * Claude Code 기본 spinner가 그대로 유지된다.
  */
+export const MAX_FEED_AGE_MS = 10 * 60_000;
+
 export function loadFeedMessages(): FeedMessage[] {
   const cache = readJsonFile<FeedCacheFile>(FEED_PATH);
-  return cache?.messages ?? [];
+  if (!cache || !Array.isArray(cache.messages)) return [];
+  const fetchedAt = Date.parse(cache.fetchedAt);
+  const now = Date.now();
+  if (!Number.isFinite(fetchedAt) || fetchedAt > now || now - fetchedAt >= MAX_FEED_AGE_MS) return [];
+  return cache.messages.filter((m) => m.expiresAt == null || Date.parse(m.expiresAt) > now);
 }
 
 export function saveFeedMessages(messages: FeedMessage[]): void {

@@ -74,7 +74,7 @@ left untouched). To opt out, add `"autoUpdate": false` to `~/.pinglet/config.jso
 | `pinglet post "message"` | Send a Ping |
 | `pinglet ping` | Preview the message that would be shown now |
 | `pinglet doctor` | Diagnose installation and connection status |
-| `pinglet uninstall` | Disconnect and restore your previous settings |
+| `pinglet uninstall` | Restore settings, revoke installations and sign out |
 
 ## Safe to use
 
@@ -98,6 +98,14 @@ npm uninstall -g pinglet-cli
 ```
 
 To also remove local data (`~/.pinglet`), run `pinglet uninstall --purge`.
+
+`uninstall` also revokes this device's installation tokens and current login session.
+`logout` revokes the current session and unlinks this device from the account, keeping
+the integration and anonymous reading. If server cleanup or settings restoration fails,
+the command reports failure and preserves the data needed to retry. `--purge` runs only
+after successful cleanup. Neither command removes npm itself.
+
+Cached feeds are used for at most 10 minutes and expired messages are no longer displayed.
 
 ## Terms & Privacy
 

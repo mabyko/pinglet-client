@@ -3,6 +3,8 @@ import { loadState, saveState, loadFeedMessages } from "../cache";
 import { pickMessage } from "../picker";
 import { appendEvent } from "../queue";
 import { runMaintenance } from "../runtime";
+import * as fs from "fs";
+import { CONFIG_PATH, loadConfig } from "../config";
 
 /**
  * Codex CLI notify hook 진입점 (experimental).
@@ -10,6 +12,7 @@ import { runMaintenance } from "../runtime";
  * notify 프로세스는 TUI 밖에서 돌기 때문에 MVP에서는 macOS 알림으로 Ping을 전달한다.
  */
 export function runNotify(args: string[]): void {
+  if (!fs.existsSync(CONFIG_PATH) || !loadConfig().adapters.codex) return;
   let notificationType: string | undefined;
   try {
     const payload = JSON.parse(args[args.length - 1] ?? "");

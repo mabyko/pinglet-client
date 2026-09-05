@@ -1,4 +1,5 @@
-import { loadConfig, saveConfig } from "../config";
+import { CONFIG_PATH, loadConfig, saveConfig } from "../config";
+import * as fs from "fs";
 import { fetchFeed, registerInstallation, sendHeartbeat } from "../api";
 import { maybeSelfUpdate } from "../update";
 import {
@@ -15,6 +16,7 @@ import { AgentType } from "../types";
  * 설치 당시 오프라인이었다면 installation 등록도 여기서 재시도한다.
  */
 export async function runRefresh(): Promise<void> {
+  if (!fs.existsSync(CONFIG_PATH)) return;
   const config = loadConfig();
 
   const wanted: AgentType[] = [];
@@ -31,7 +33,7 @@ export async function runRefresh(): Promise<void> {
     }
   }
 
-  const records = Object.values(config.installations);
+  const records = wanted.flatMap((agent) => config.installations[agent] ? [config.installations[agent]!] : []);
   if (records.length === 0) return;
 
   const onlineCounts = await Promise.all(

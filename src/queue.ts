@@ -2,9 +2,11 @@ import * as fs from "fs";
 import { randomUUID } from "crypto";
 import { EVENTS_PATH, ensurePingletDir } from "./config";
 import { AgentType, EventType, QueuedEvent } from "./types";
+import { atomicWrite } from "./storage";
 
 /**
- * Local Event Queue (append-only JSONL).
+ * Local Event Queue (JSONL). All CLI writers hold withPingletLock for the
+ * complete command, so append and removal cannot interleave across processes.
  * 노출 즉시 서버를 호출하지 않고 여기 기록했다가 batch 전송한다 (아키텍처 §8).
  */
 export function appendEvent(input: {
@@ -55,5 +57,5 @@ export function countEvents(): number {
 export function removeEvents(sentEventIds: Set<string>): void {
   const remaining = readEvents().filter((e) => !sentEventIds.has(e.eventId));
   const body = remaining.map((e) => JSON.stringify(e)).join("\n");
-  fs.writeFileSync(EVENTS_PATH, body ? body + "\n" : "");
+  atomicWrite(EVENTS_PATH, body ? body + "\n" : "");
 }

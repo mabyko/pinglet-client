@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { loadConfig } from "../config";
+import { CONFIG_PATH, loadConfig } from "../config";
 import {
   loadFeedMessages,
   loadOnline,
@@ -121,13 +121,15 @@ function rotateSpinner(state: RuntimeState, now: number): void {
  * - flush/refresh 백그라운드 트리거 (Claude 사용 중 항상 호출되므로 이 경로에서)
  */
 export function runStatusline(): void {
+  if (!fs.existsSync(CONFIG_PATH) || !loadConfig().adapters.claude) return;
   const payload = readPayload();
   const state = loadState();
   const now = Date.now();
 
   trackSpinnerActivity(state, payload);
 
-  const rotateDue = !state.current || now - state.current.shownAt >= ROTATE_MS;
+  const rotateDue = !state.current || now - state.current.shownAt >= ROTATE_MS ||
+    !loadFeedMessages().some((message) => message.id === state.current?.messageId);
   // 300ms마다 호출되므로 저장/maintenance는 1초 스로틀. 회전 시점에는 항상 저장.
   const saveDue =
     rotateDue ||

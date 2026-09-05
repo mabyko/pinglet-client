@@ -16,7 +16,7 @@ Usage: pinglet <command>
 
   install [--api <url>] [--force]   Install the Claude Code integration
           [--claude | --codex]      Codex uses OS notifications; opt in with --codex (experimental)
-  uninstall [--purge]               Remove the integration (--purge: also delete ~/.pinglet)
+  uninstall [--purge]               Restore settings and revoke credentials (--purge: delete ~/.pinglet)
   login [--github | --google]       Link your account (GitHub or Google; pick in the browser if omitted)
         [--token <jwt>]
   logout                            Sign out (keeps the integration and cache)
@@ -54,6 +54,10 @@ Internal commands (called by the integration):
 
   // ---- logout
   "logout.notLoggedIn": "○ You are not logged in.",
+  "logout.failed": "Server sign-out failed. Credentials are preserved; retry pinglet logout when connected.",
+  "uninstall.failed": "Server revocation failed. Local data is preserved; retry pinglet uninstall when connected.",
+  "uninstall.npm": "To remove the CLI package too, run: npm uninstall -g pinglet-cli (npm itself is kept).",
+  "login.invalidToken": "Login could not be verified. Existing credentials were preserved; check your token and connection.",
   "logout.done": "✓ Logged out. Reading still works; run `pinglet login` again to post.",
 
   // ---- post
@@ -109,7 +113,7 @@ Internal commands (called by the integration):
   "doctor.notLoggedIn": "Not logged in — reading works; run `pinglet login` to post / react",
 
   // ---- misc commands
-  "uninstall.keep": "○ ~/.pinglet is kept. Use --purge to remove everything.",
+  "uninstall.keep": "○ Local cache and history are kept. Use --purge to delete ~/.pinglet too.",
   "ping.none": "No Ping to show — one will appear once the feed is received.",
   "postinstall.start": "\npinglet: running first-time setup automatically (`pinglet install`)",
   "postinstall.failed": "pinglet: automatic setup failed. Please run `pinglet install` yourself.",
@@ -120,7 +124,7 @@ Internal commands (called by the integration):
   "codex.existingNotify": "An existing notify setting was found (use --force to back it up and replace).",
   "slash.postDesc": "Post a message to Pinglet so it shows in other developers' terminals",
   "slash.loginDesc": "Link your Pinglet account (GitHub or Google login in the browser; --github/--google to choose)",
-  "slash.logoutDesc": "Sign out of Pinglet (removes the login token on this machine only)",
+  "slash.logoutDesc": "Sign out of Pinglet (revoke this session and unlink this device)",
 } satisfies Record<string, Msg>;
 
 export type MessageKey = keyof typeof en;
@@ -132,7 +136,7 @@ const ko: Record<MessageKey, Msg> = {
 
   install [--api <url>] [--force]   Claude Code integration 설치
           [--claude | --codex]      Codex는 OS 알림 방식이라 --codex로 opt-in (experimental)
-  uninstall [--purge]               integration 제거 (--purge: ~/.pinglet까지 삭제)
+  uninstall [--purge]               설정 복원·서버 인증 해제 (--purge: ~/.pinglet까지 삭제)
   login [--github | --google]       계정 연결 (GitHub 또는 Google, 생략 시 브라우저에서 선택)
         [--token <jwt>]
   logout                            로그인 해제 (설치·캐시는 유지)
@@ -167,6 +171,10 @@ const ko: Record<MessageKey, Msg> = {
   "login.html.failSub": "터미널에서 다시 시도해 주세요.",
 
   "logout.notLoggedIn": "○ 로그인 상태가 아닙니다.",
+  "logout.failed": "서버 로그아웃에 실패했습니다. 재시도할 수 있도록 인증 정보를 보존했습니다. 연결 후 pinglet logout을 다시 실행하세요.",
+  "uninstall.failed": "서버 인증 해제에 실패해 로컬 데이터를 보존했습니다. 연결 후 pinglet uninstall을 다시 실행하세요.",
+  "uninstall.npm": "CLI 패키지도 제거하려면: npm uninstall -g pinglet-cli (npm 자체는 유지됩니다).",
+  "login.invalidToken": "로그인을 확인할 수 없습니다. 기존 인증 정보는 보존했습니다. 토큰과 서버 연결을 확인하세요.",
   "logout.done": "✓ 로그아웃했습니다. 읽기는 계속 되고, 메시지 작성은 `pinglet login` 후 가능합니다.",
 
   "reason.EMPTY": "빈 메시지는 등록할 수 없습니다",
@@ -217,7 +225,7 @@ const ko: Record<MessageKey, Msg> = {
   "doctor.loggedIn": "로그인됨",
   "doctor.notLoggedIn": "로그인 안 됨 — 읽기는 가능, 메시지 작성/반응은 `pinglet login` 후",
 
-  "uninstall.keep": "○ ~/.pinglet은 유지됩니다. 전부 지우려면 --purge를 사용하세요.",
+  "uninstall.keep": "○ 로컬 캐시·기록은 유지됩니다. ~/.pinglet도 지우려면 --purge를 사용하세요.",
   "ping.none": "표시할 Ping이 없습니다 — 서버 feed를 받으면 표시됩니다.",
   "postinstall.start": "\npinglet: 첫 설정을 자동으로 진행합니다 (`pinglet install`)",
   "postinstall.failed": "pinglet: 자동 설정에 실패했습니다. `pinglet install`을 직접 실행해 주세요.",
@@ -227,7 +235,7 @@ const ko: Record<MessageKey, Msg> = {
   "codex.existingNotify": "기존 notify 설정이 있습니다 (백업 후 교체하려면 --force).",
   "slash.postDesc": "메시지를 Pinglet에 등록해 다른 개발자들의 터미널에 표시",
   "slash.loginDesc": "Pinglet 계정 연결 (브라우저에서 GitHub 또는 Google 로그인, --github/--google로 지정 가능)",
-  "slash.logoutDesc": "Pinglet 로그인 해제 (이 기기의 로그인 토큰만 제거)",
+  "slash.logoutDesc": "Pinglet 로그인 해제 (서버 세션 폐기·이 기기의 계정 연결 해제)",
 };
 
 const ja: Record<MessageKey, Msg> = {
@@ -237,7 +245,7 @@ const ja: Record<MessageKey, Msg> = {
 
   install [--api <url>] [--force]   Claude Code integration をインストール
           [--claude | --codex]      Codex は OS 通知方式のため --codex で opt-in (experimental)
-  uninstall [--purge]               integration を削除 (--purge: ~/.pinglet も削除)
+  uninstall [--purge]               設定を復元・認証を解除 (--purge: ~/.pinglet も削除)
   login [--github | --google]       アカウント連携 (GitHub または Google、省略時はブラウザで選択)
         [--token <jwt>]
   logout                            ログアウト (連携設定・キャッシュは維持)
@@ -272,6 +280,10 @@ const ja: Record<MessageKey, Msg> = {
   "login.html.failSub": "ターミナルからもう一度お試しください。",
 
   "logout.notLoggedIn": "○ ログインしていません。",
+  "logout.failed": "サーバーのログアウトに失敗しました。認証情報は保持しています。接続後に pinglet logout を再実行してください。",
+  "uninstall.failed": "サーバーの認証解除に失敗したため、ローカルデータを保持しました。接続後に pinglet uninstall を再実行してください。",
+  "uninstall.npm": "CLI パッケージも削除するには: npm uninstall -g pinglet-cli（npm 本体は保持されます）。",
+  "login.invalidToken": "ログインを確認できませんでした。既存の認証情報は保持しています。トークンと接続を確認してください。",
   "logout.done": "✓ ログアウトしました。閲覧は引き続き可能で、投稿は `pinglet login` 後にできます。",
 
   "reason.EMPTY": "空のメッセージは投稿できません",
@@ -322,7 +334,7 @@ const ja: Record<MessageKey, Msg> = {
   "doctor.loggedIn": "ログイン済み",
   "doctor.notLoggedIn": "未ログイン — 閲覧は可能、投稿/リアクションは `pinglet login` 後",
 
-  "uninstall.keep": "○ ~/.pinglet は維持されます。すべて削除するには --purge を使ってください。",
+  "uninstall.keep": "○ ローカルキャッシュと履歴は保持されます。~/.pinglet も削除するには --purge を使ってください。",
   "ping.none": "表示する Ping がありません — サーバーから feed を受信すると表示されます。",
   "postinstall.start": "\npinglet: 初期設定を自動的に行います (`pinglet install`)",
   "postinstall.failed": "pinglet: 自動設定に失敗しました。`pinglet install` を手動で実行してください。",
@@ -332,7 +344,7 @@ const ja: Record<MessageKey, Msg> = {
   "codex.existingNotify": "既存の notify 設定があります (バックアップして置き換えるには --force)。",
   "slash.postDesc": "メッセージを Pinglet に投稿して他の開発者のターミナルに表示",
   "slash.loginDesc": "Pinglet アカウント連携 (ブラウザで GitHub または Google ログイン、--github/--google で指定可)",
-  "slash.logoutDesc": "Pinglet ログアウト (このマシンのログイントークンのみ削除)",
+  "slash.logoutDesc": "Pinglet ログアウト (サーバーセッション失効・この端末のアカウント連携解除)",
 };
 
 const tables: Record<DisplayLocale, Record<MessageKey, Msg>> = { en, ko, ja };

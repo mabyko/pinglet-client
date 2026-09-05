@@ -12,6 +12,7 @@ import { runRefresh } from "./commands/refresh";
 import { runPing } from "./commands/ping";
 import { runPost } from "./commands/post";
 import { t } from "./i18n";
+import { withPingletLock } from "./lock";
 
 const HELP = t("cli.help", { version: VERSION });
 
@@ -23,13 +24,13 @@ async function main(): Promise<void> {
       await runInstall(rest);
       break;
     case "uninstall":
-      runUninstall(rest);
+      await runUninstall(rest);
       break;
     case "login":
       await runLogin(rest);
       break;
     case "logout":
-      runLogout();
+      await runLogout();
       break;
     case "doctor":
       await runDoctor();
@@ -74,7 +75,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
+withPingletLock(main, {
+  skipIfBusy: ["statusline", "notify", "refresh", "flush"].includes(process.argv[2]),
+}).catch((error) => {
   // statusline/notify는 조용히 실패해야 Claude/Codex 경험을 해치지 않는다.
   const command = process.argv[2];
   if (command === "statusline" || command === "notify") {

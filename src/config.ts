@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { AgentType, InstallRecord } from "./types";
+import { atomicWrite, isMissing } from "./storage";
 
 /** package.json의 version — 하드코딩하면 npm version bump와 어긋난다. */
 export const VERSION: string = (() => {
@@ -57,27 +58,37 @@ export interface PingletConfig {
 }
 
 export function ensurePingletDir(): void {
-  fs.mkdirSync(PINGLET_DIR, { recursive: true });
+  fs.mkdirSync(PINGLET_DIR, { recursive: true, mode: 0o700 });
 }
 
-export function readJsonFile<T>(filePath: string): T | null {
+export function readJsonFile<T>(filePath: string, strict = false): T | null {
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8")) as T;
-  } catch {
+    const value = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (strict && (!value || typeof value !== "object" || Array.isArray(value))) {
+      throw new Error("Expected a JSON object");
+    }
+    return value as T;
+  } catch (error) {
+    if (strict && !isMissing(error)) throw new Error(`Cannot read ${filePath}; original file preserved.`, { cause: error });
     return null;
   }
 }
 
 export function writeJsonFile(filePath: string, value: unknown): void {
   ensurePingletDir();
-  const tmp = filePath + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
-  fs.renameSync(tmp, filePath);
+  atomicWrite(filePath, JSON.stringify(value, null, 2));
 }
 
 export function loadConfig(): PingletConfig {
-  const existing = readJsonFile<PingletConfig>(CONFIG_PATH);
+  const existing = readJsonFile<PingletConfig>(CONFIG_PATH, true);
   if (existing) {
+    const object = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+    if (typeof existing.apiBaseUrl !== "string" || typeof existing.createdAt !== "string" ||
+        (existing.userToken !== undefined && typeof existing.userToken !== "string") ||
+        (existing.installations !== undefined && !object(existing.installations)) ||
+        (existing.adapters !== undefined && !object(existing.adapters))) {
+      throw new Error(`Invalid ${CONFIG_PATH}; original file preserved.`);
+    }
     existing.installations ??= {};
     existing.adapters ??= {};
     return existing;

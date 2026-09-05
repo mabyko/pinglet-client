@@ -1,6 +1,6 @@
 {
   "name": "pinglet-cli",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "Short messages from other developers shown in your Claude Code spinner while the AI thinks — zero tokens, never reads your code. Claude Code / Codex integration",
   "license": "MIT",
   "repository": {
@@ -27,6 +27,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node --test test/*.test.cjs",
     "dev": "tsc --watch",
     "prepare": "npm run build",
     "postinstall": "node dist/postinstall.js || exit 0"

@@ -3,7 +3,7 @@ import * as http from "http";
 import { AddressInfo } from "net";
 import * as readline from "readline";
 import { loadConfig, saveConfig } from "../config";
-import { linkInstallation } from "../api";
+import { linkInstallation, validateUserToken, releaseCredential } from "../api";
 import { currentLocale, t } from "../i18n";
 
 const LOGIN_TIMEOUT_MS = 180_000;
@@ -29,7 +29,9 @@ function openBrowser(url: string): boolean {
         ? ["cmd", "/c", "start", "", url]
         : ["xdg-open", url];
   try {
-    spawn(cmd[0], cmd.slice(1), { stdio: "ignore" }).unref();
+    const child = spawn(cmd[0], cmd.slice(1), { stdio: "ignore" });
+    child.on("error", () => {});
+    child.unref();
     return true;
   } catch {
     return false;
@@ -84,7 +86,7 @@ function loginViaLoopback(
     };
     const timer = setTimeout(() => done(null), LOGIN_TIMEOUT_MS);
 
-    const server = http.createServer((req, res) => {
+    const server = http.createServer(async (req, res) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       if (url.pathname !== "/callback") {
         res.statusCode = 404;
@@ -93,8 +95,10 @@ function loginViaLoopback(
       }
       const token = url.searchParams.get("token");
       res.setHeader("content-type", "text/html; charset=utf-8");
-      res.end(RESULT_HTML(Boolean(token)));
-      done(token);
+      const valid = Boolean(token) && await validateUserToken({ apiBaseUrl }, token!);
+      res.statusCode = valid ? 200 : 401;
+      res.end(RESULT_HTML(valid));
+      if (valid) done(token);
     });
     server.on("error", () => done(null));
 
@@ -154,6 +158,16 @@ export async function runLogin(args: string[]): Promise<void> {
     return;
   }
 
+  if (!await validateUserToken(config, token)) {
+    console.log(t("login.invalidToken"));
+    if (!quiet) process.exitCode = 1;
+    return;
+  }
+  if (config.userToken && config.userToken !== token) {
+    if (!await releaseCredential(config, "user", config.userToken)) {
+      throw new Error(t("logout.failed"));
+    }
+  }
   config.userToken = token;
   saveConfig(config);
   console.log(t("login.saved"));

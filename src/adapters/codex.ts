@@ -4,6 +4,7 @@ import * as os from "os";
 import * as path from "path";
 import { execFileSync } from "child_process";
 import { PingletConfig, cliPath, saveConfig } from "../config";
+import { atomicWrite, isMissing } from "../storage";
 
 const CODEX_DIR = path.join(os.homedir(), ".codex");
 const CONFIG_TOML_PATH = path.join(CODEX_DIR, "config.toml");
@@ -33,8 +34,9 @@ function notifyLine(): string {
 function readToml(): string {
   try {
     return fs.readFileSync(CONFIG_TOML_PATH, "utf8");
-  } catch {
-    return "";
+  } catch (error) {
+    if (isMissing(error)) return "";
+    throw error;
   }
 }
 
@@ -58,7 +60,11 @@ function findNotifyEntry(toml: string): string | null {
   let depth = 0;
   for (; i < toml.length; i++) {
     const ch = toml[i];
-    if (ch === '"' || ch === "'") {
+    if (ch === "#") {
+      const end = toml.indexOf("\n", i);
+      if (end === -1) break;
+      i = end;
+    } else if (ch === '"' || ch === "'") {
       const quote = ch;
       i++;
       while (i < toml.length && toml[i] !== quote) {
@@ -72,8 +78,7 @@ function findNotifyEntry(toml: string): string | null {
       if (depth === 0) return toml.slice(start, i + 1);
     }
   }
-  // 괄호 짝이 안 맞음 — 이미 깨진 파일이므로 건드리지 않는다.
-  return null;
+  throw new Error(`Invalid notify array in ${CONFIG_TOML_PATH}; original settings preserved.`);
 }
 
 export function isCodexIntegrationInstalled(): boolean {
@@ -118,7 +123,7 @@ export function installCodexIntegration(
     next = notifyLine() + "\n" + toml;
   }
   fs.mkdirSync(CODEX_DIR, { recursive: true });
-  fs.writeFileSync(CONFIG_TOML_PATH, next);
+  atomicWrite(CONFIG_TOML_PATH, next);
   return { ok: true };
 }
 
@@ -128,13 +133,19 @@ export function uninstallCodexIntegration(config: PingletConfig): boolean {
   const isOurs =
     existing !== null &&
     (existing.includes("pinglet") || existing.includes(cliPath()));
-  if (!existing || !isOurs) return false;
+  if (!existing || !isOurs) {
+    if (config.adapters.codex) {
+      delete config.adapters.codex;
+      saveConfig(config);
+    }
+    return false;
+  }
 
   const backup = config.adapters.codex?.notifyBackup;
   const next = backup
     ? toml.replace(existing, backup)
     : toml.replace(existing + "\n", "").replace(existing, "");
-  fs.writeFileSync(CONFIG_TOML_PATH, next);
+  atomicWrite(CONFIG_TOML_PATH, next);
   delete config.adapters.codex;
   saveConfig(config);
   return true;
