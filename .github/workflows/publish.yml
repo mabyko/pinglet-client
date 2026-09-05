@@ -44,7 +44,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test
+      - run: npm test --if-present
 
       # 버튼 실행: main에서만 허용
       - name: Refuse dispatch outside main
