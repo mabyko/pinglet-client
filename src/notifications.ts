@@ -33,16 +33,35 @@ export function enqueueNotification(args: string[]): boolean {
   }
 }
 
-/** Caller holds the short state lock. Failed work stays on disk for retry. */
+const MAX_NOTIFICATION_AGE_MS = 60 * 60_000;
+
+/** Caller holds the short state lock. Failed work stays on disk for retry.
+ * One unreadable or stale file must never stop the hook: unparseable files are
+ * discarded (their notification cannot be recovered), a turn-complete notice
+ * older than an hour is useless and discarded, and a delivery failure keeps
+ * its file for the next drain without affecting the other files.
+ */
 export function drainNotifications(): void {
   if (!fs.existsSync(CONFIG_PATH)) return;
   const config = loadConfig();
   for (const name of fs.readdirSync(PINGLET_DIR).filter(name => name.startsWith(PREFIX) && name.endsWith(".json"))) {
     const file = path.join(PINGLET_DIR, name);
-    const event = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (config.adapters.codex?.installedAt === event.installedAt && config.apiBaseUrl === event.apiBaseUrl) {
-      runNotify([JSON.stringify({ type: event.type })], "evt_" + name.slice(PREFIX.length, -5));
+    let event: { type: string; installedAt?: unknown; apiBaseUrl?: unknown } | null = null;
+    let stale = false;
+    try {
+      stale = Date.now() - fs.statSync(file).mtimeMs > MAX_NOTIFICATION_AGE_MS;
+      const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (parsed && typeof parsed === "object" && typeof parsed.type === "string") event = parsed;
+    } catch (error) {
+      if (isMissing(error)) continue; // Removed concurrently (purge/uninstall).
     }
-    fs.unlinkSync(file); // Stale installation notifications must not survive reinstall.
+    if (event && !stale && config.adapters.codex?.installedAt === event.installedAt && config.apiBaseUrl === event.apiBaseUrl) {
+      try {
+        runNotify([JSON.stringify({ type: event.type })], "evt_" + name.slice(PREFIX.length, -5));
+      } catch {
+        continue; // Keep the file; the same eventId is reused on retry.
+      }
+    }
+    try { fs.unlinkSync(file); } catch (error) { if (!isMissing(error)) throw error; }
   }
 }

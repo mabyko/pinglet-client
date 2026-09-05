@@ -331,3 +331,63 @@ test('live or freshly initializing recovery owner is not reaped', async () => {
   assert.equal(fs.existsSync(owner), true);
   fs.unlinkSync(owner); fs.rmdirSync(recovery); fs.unlinkSync(lock);
 });
+
+test('unreadable or stale notification files are discarded without stopping the drain', async () => {
+  const cfg = config.loadConfig();
+  cfg.adapters.codex = { installedAt: 'generation-one', configPath: 'fixture' };
+  config.saveConfig(cfg);
+  const childProcess = require('node:child_process');
+  const execFile = childProcess.execFile;
+  childProcess.execFile = () => ({});
+  try {
+    const dir = config.PINGLET_DIR;
+    fs.writeFileSync(path.join(dir, 'notify-aaaaaaaa-0000-4000-8000-000000000001.json'), '');
+    fs.writeFileSync(path.join(dir, 'notify-aaaaaaaa-0000-4000-8000-000000000002.json'), 'null');
+    const old = path.join(dir, 'notify-aaaaaaaa-0000-4000-8000-000000000003.json');
+    fs.writeFileSync(old, JSON.stringify({ type: 'agent-turn-complete', installedAt: 'generation-one', apiBaseUrl: 'https://fixture.invalid' }));
+    const past = new Date(Date.now() - 2 * 3600_000);
+    fs.utimesSync(old, past, past);
+    assert.equal(enqueueNotification([JSON.stringify({ type: 'agent-turn-complete' })]), true);
+    assert.equal(queued().length, 4);
+    await withPingletLock(drainNotifications);
+    assert.equal(queued().length, 0);
+    assert.equal(queue.readEvents().filter(e => e.agentType === 'CODEX').length, 1);
+    tick();
+    assert.equal(cache.loadState().current.messageId, message.id);
+  } finally { childProcess.execFile = execFile; }
+});
+
+test('a delivery failure keeps its notification file for retry with the same event id', async () => {
+  const cfg = config.loadConfig();
+  cfg.adapters.codex = { installedAt: 'generation-one', configPath: 'fixture' };
+  config.saveConfig(cfg);
+  const childProcess = require('node:child_process');
+  const execFile = childProcess.execFile;
+  childProcess.execFile = () => ({});
+  const eventsPath = path.join(config.PINGLET_DIR, 'events.jsonl');
+  try {
+    assert.equal(enqueueNotification([JSON.stringify({ type: 'agent-turn-complete' })]), true);
+    fs.mkdirSync(eventsPath); // appendFileSync fails with EISDIR
+    await withPingletLock(drainNotifications);
+    assert.equal(queued().length, 1);
+    fs.rmdirSync(eventsPath);
+    const id = 'evt_' + queued()[0].slice('notify-'.length, -5);
+    await withPingletLock(drainNotifications);
+    assert.equal(queued().length, 0);
+    assert.deepEqual(queue.readEvents().map(e => e.eventId), [id]);
+  } finally { childProcess.execFile = execFile; fs.rmSync(eventsPath, { recursive: true, force: true }); }
+});
+
+test('unparseable settings.json settles a qualified impression once, not on every tick', () => {
+  tick();
+  const state = cache.loadState();
+  assert.equal(state.current.messageId, message.id);
+  state.current.visibleMs = runtime.QUALIFIED_MS;
+  state.current.shownAt = 0;
+  cache.saveState(state);
+  fs.writeFileSync(settingsPath, '{broken');
+  assert.throws(() => tick());
+  assert.throws(() => tick());
+  assert.equal(queue.readEvents().filter(e => e.type === 'QUALIFIED_IMPRESSION').length, 1);
+  assert.equal(cache.loadState().current.visibleMs, 0);
+});

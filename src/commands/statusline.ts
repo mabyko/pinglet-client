@@ -85,6 +85,10 @@ function rotateSpinner(state: RuntimeState, now: number): void {
       visibleMs: prev.visibleMs,
     });
     prev.visibleMs = 0; // A failed replacement must not account this interval twice.
+    // The event is already on disk. Persist the reset now: if arming below throws
+    // (e.g. settings.json is temporarily unparseable) the tick ends before the
+    // final saveState and the next tick would settle the same interval again.
+    saveState(state);
   }
 
   const message = pickMessage(loadFeedMessages(), state);
