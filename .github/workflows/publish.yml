@@ -1,0 +1,77 @@
+name: Publish to npm
+
+on:
+  # 방법 1: 태그를 직접 push (컴퓨터에서 npm version 후 git push --follow-tags)
+  push:
+    tags:
+      - "v*"
+  # 방법 2: GitHub 앱/웹에서 "Run workflow" 버튼 (버전 올리기·태그·publish를 CI가 수행)
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "버전 올리기 종류"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write   # workflow_dispatch 시 버전 커밋·태그 push
+  id-token: write   # npm Trusted Publishing(OIDC)
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing은 npm 11.5.1 이상 필요
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - run: npm test
+
+      # 버튼 실행: main에서만 허용
+      - name: Refuse dispatch outside main
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo "workflow_dispatch는 main 브랜치에서만 실행할 수 있습니다 (현재: ${GITHUB_REF})" >&2
+          exit 1
+
+      # 버튼 실행: 버전 올리고 커밋·태그를 push
+      - name: Bump version and push tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "${{ inputs.bump }}" -m "v%s"
+          git push --follow-tags origin HEAD:main
+
+      # 태그 push 실행: 태그와 package.json 버전이 같은지 확인
+      - name: Check tag matches package.json version
+        if: github.event_name == 'push'
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "tag v$TAG != package.json $PKG" >&2
+            exit 1
+          fi
+
+      # 토큰 없이 OIDC로 publish. provenance는 자동으로 붙는다.
+      - run: npm publish --access public
