@@ -5,6 +5,7 @@ import * as readline from "readline";
 import { loadConfig, saveConfig } from "../config";
 import { linkInstallation, validateUserToken, releaseCredential } from "../api";
 import { currentLocale, t } from "../i18n";
+import { withPingletLock } from "../lock";
 
 const LOGIN_TIMEOUT_MS = 180_000;
 
@@ -168,8 +169,13 @@ export async function runLogin(args: string[]): Promise<void> {
       throw new Error(t("logout.failed"));
     }
   }
+  await withPingletLock(() => {
+    // Hooks may have added adapter restoration metadata while OAuth was open.
+    const current = loadConfig();
+    current.userToken = token;
+    saveConfig(current);
+  });
   config.userToken = token;
-  saveConfig(config);
   console.log(t("login.saved"));
 
   for (const [agentType, record] of Object.entries(config.installations)) {

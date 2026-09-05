@@ -1,6 +1,6 @@
 import { runInstall } from "./commands/install";
 import { t } from "./i18n";
-import { withPingletLock } from "./lock";
+import { withCommandLock } from "./lock";
 
 /**
  * npm install -g pinglet-cli 직후 자동으로 `pinglet install`을 수행한다.
@@ -13,7 +13,7 @@ import { withPingletLock } from "./lock";
 async function main(): Promise<void> {
   if (process.env.npm_config_global !== "true") return;
   console.log(t("postinstall.start"));
-  await withPingletLock(() => runInstall([]));
+  await withCommandLock(() => runInstall([]));
 }
 
 main()

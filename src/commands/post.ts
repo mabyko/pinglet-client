@@ -41,7 +41,9 @@ export async function runPost(args: string[]): Promise<void> {
   const config = loadConfig();
   const requestId = pendingPostId(config, text, category);
   const result = await createMessage(config, text, category, requestId);
-  if (result.ok || (result.error !== "NETWORK" && result.error !== "SERVER")) completePost(requestId);
+  // Only a definitive response resolves an earlier ambiguous commit. In
+  // particular 401/429 say nothing about whether the previous request committed.
+  if (result.ok) completePost(requestId);
   // 슬래시 명령 안에서는 같은 방식의 슬래시 명령을 안내한다.
   const loginCmd = quiet ? "/pinglet-login" : "pinglet login";
 

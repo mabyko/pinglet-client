@@ -6,13 +6,14 @@ import { runDoctor } from "./commands/doctor";
 import { runLogin } from "./commands/login";
 import { runLogout } from "./commands/logout";
 import { runStatusline } from "./commands/statusline";
-import { runNotify } from "./commands/notify";
 import { runFlush } from "./commands/flush";
 import { runRefresh } from "./commands/refresh";
 import { runPing } from "./commands/ping";
 import { runPost } from "./commands/post";
 import { t } from "./i18n";
-import { withPingletLock } from "./lock";
+import { withPingletLock, withCommandLock } from "./lock";
+import { enqueueNotification, drainNotifications } from "./notifications";
+import { spawnDetachedCommand } from "./runtime";
 
 const HELP = t("cli.help", { version: VERSION });
 
@@ -44,9 +45,6 @@ async function main(): Promise<void> {
     case "statusline":
       runStatusline();
       break;
-    case "notify":
-      runNotify(rest);
-      break;
     case "flush":
       await runFlush();
       break;
@@ -75,12 +73,28 @@ async function main(): Promise<void> {
   }
 }
 
-withPingletLock(main, {
-  skipIfBusy: ["statusline", "notify", "refresh", "flush"].includes(process.argv[2]),
-}).catch((error) => {
+async function dispatch(): Promise<void> {
+  const command = process.argv[2];
+  if (command === "notify") {
+    if (enqueueNotification(process.argv.slice(3))) spawnDetachedCommand(["notify-drain"]);
+    return;
+  }
+  if (command === "notify-drain" || command === "statusline") {
+    await withPingletLock(() => {
+      drainNotifications();
+      if (command === "statusline") runStatusline();
+    }, { skipIfBusy: command === "statusline" });
+    return;
+  }
+  if (["--version", "-v", "help", "--help"].includes(command)) { await main(); return; }
+  await withCommandLock(main);
+  await withPingletLock(drainNotifications);
+}
+
+dispatch().catch((error) => {
   // statusline/notify는 조용히 실패해야 Claude/Codex 경험을 해치지 않는다.
   const command = process.argv[2];
-  if (command === "statusline" || command === "notify") {
+  if (command === "statusline" || command === "notify" || command === "notify-drain") {
     process.exit(0);
   }
   console.error("pinglet:", error instanceof Error ? error.message : error);

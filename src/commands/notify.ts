@@ -11,7 +11,7 @@ import { CONFIG_PATH, loadConfig } from "../config";
  * Codex는 turn 완료 시 마지막 인자로 notification JSON을 넘긴다.
  * notify 프로세스는 TUI 밖에서 돌기 때문에 MVP에서는 macOS 알림으로 Ping을 전달한다.
  */
-export function runNotify(args: string[]): void {
+export function runNotify(args: string[], eventId?: string): void {
   if (!fs.existsSync(CONFIG_PATH) || !loadConfig().adapters.codex) return;
   let notificationType: string | undefined;
   try {
@@ -32,7 +32,7 @@ export function runNotify(args: string[]): void {
     saveState(state);
     return;
   }
-  appendEvent({ agentType: "CODEX", type: "DELIVERED", messageId: message.id });
+  appendEvent({ eventId, agentType: "CODEX", type: "DELIVERED", messageId: message.id });
   state.seen[message.id] = (state.seen[message.id] ?? 0) + 1;
   runMaintenance(state, now);
   saveState(state);

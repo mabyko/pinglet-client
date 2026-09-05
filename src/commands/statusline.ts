@@ -84,6 +84,7 @@ function rotateSpinner(state: RuntimeState, now: number): void {
       messageId: prev.messageId,
       visibleMs: prev.visibleMs,
     });
+    prev.visibleMs = 0; // A failed replacement must not account this interval twice.
   }
 
   const message = pickMessage(loadFeedMessages(), state);
@@ -93,7 +94,12 @@ function rotateSpinner(state: RuntimeState, now: number): void {
     return;
   }
 
-  armSpinnerMessage(config, message);
+  if (!armSpinnerMessage(config, message)) {
+    // No delivery/current transition until the settings write actually commits.
+    // Clear attribution of subsequent API time and retry on the next tick.
+    state.current = undefined;
+    return;
+  }
   state.seen[message.id] = (state.seen[message.id] ?? 0) + 1;
   state.delivered ??= {};
   if (!state.delivered[message.id]) {

@@ -104,20 +104,30 @@ export async function uploadEventBatch(
   record: InstallRecord,
   events: QueuedEvent[],
 ): Promise<boolean> {
-  const res = await request<unknown>(config, "POST", "/events/batch", {
-    token: record.token,
-    body: {
-      batchId: "batch_" + randomUUID(),
-      events: events.map(({ eventId, type, messageId, visibleMs, occurredAt }) => ({
-        eventId,
-        type,
-        messageId,
-        ...(visibleMs !== undefined && { visibleMs }),
-        occurredAt,
-      })),
-    },
-  });
-  return res !== null;
+  return (await uploadEventBatchResult(config, record, events)).ok;
+}
+
+export async function uploadEventBatchResult(
+  config: PingletConfig, record: InstallRecord, events: QueuedEvent[],
+): Promise<{ ok: boolean; permanent: boolean; status?: number }> {
+  try {
+    const res = await fetch(config.apiBaseUrl + "/events/batch", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${record.token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      body: JSON.stringify({
+        batchId: "batch_" + randomUUID(),
+        events: events.map(({ eventId, type, messageId, visibleMs, occurredAt }) => ({
+          eventId,
+          type,
+          messageId,
+          ...(visibleMs !== undefined && { visibleMs }),
+          occurredAt,
+        })),
+      }),
+    });
+    return { ok: res.ok, permanent: [400, 413, 422].includes(res.status), status: res.status };
+  } catch { return { ok: false, permanent: false }; }
 }
 
 /** POST /installations/heartbeat — lastSeenAt 갱신. 응답의 온라인 설치 수를 돌려준다(구서버는 null). */

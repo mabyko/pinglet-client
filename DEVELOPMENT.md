@@ -93,6 +93,23 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   append하고, 20개 이상 또는 60초 주기로 detached 프로세스가 batch 전송한다.
   전송 성공분만 큐에서 제거하므로 실패분은 자동 재시도되며, 재전송 중복은
   서버가 `eventId`로 dedupe한다.
+- **짧은 로컬 잠금** — `.pinglet.lock`은 파일 읽기/수정/쓰기 구간만 보호한다.
+  로그인·설치·통신 명령은 별도 `.pinglet.lock.command`로 순서를 보장하므로
+  OAuth/HTTP 대기 중에도 훅이 실행된다. 복구 잠금에는 소유 PID를 남기며,
+  죽은 복구 프로세스와 30초 이상 된 빈 복구 디렉터리는 다음 실행에서 정리한다.
+- **Codex 알림 대기열** — `notify-<uuid>.json`에 이벤트 종류와 설치 세대만 저장하고
+  별도 worker가 로컬 잠금 획득 후 처리한다. 원본 Codex payload는 저장하지 않는다.
+  처리 실패 시 파일을 유지하며 다음 worker/훅/명령이 재처리한다. 재처리에도 같은 eventId를 사용한다.
+- **설치별 통계** — 큐에는 수집 당시 installationId를 기록한다. uninstall은 훅을 제거한 뒤
+  이전 설치로 최종 전송을 시도하고, 남은 이벤트는 `events-quarantine.jsonl`에 보관한다.
+  새 설치 ID로 이전 기록을 재전송하지 않는다. 재설치 시 이전 도달·spinner 상태도 이어받지 않는다.
+  `--purge`는 격리 기록을 포함한 로컬 데이터를 삭제한다.
+- **영구 실패 격리** — 손상된 큐 항목과 잘못된 시간/숫자 값은 격리한다.
+  HTTP 400/413/422 배치는 분할하여 문제 항목만 격리하고 정상 항목은 계속 전송한다.
+  401/403/429/5xx·네트워크 오류는 큐를 유지한다. visibleMs는 0~60,000ms,
+  occurredAt은 2000년 이후~현재+5분 범위이며 오래된 오프라인 기록은 허용한다.
+- **게시 재시도** — 응답 유실 뒤 401/429가 와도 requestId를 버리지 않는다.
+  동일 계정의 JWT가 바뀌어도 키를 유지하고 확정 응답을 받은 뒤에만 정리한다.
 - **Privacy** — prompt/응답/코드/환경변수를 읽지 않는다. 수집하는 것은
   installationId, agentType, OS, clientVersion, 메시지 delivery 이벤트뿐이다.
 

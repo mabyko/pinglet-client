@@ -10,6 +10,7 @@ import {
 } from "../cache";
 import { armSpinnerMessage } from "../adapters/claude";
 import { AgentType } from "../types";
+import { withPingletLock } from "../lock";
 
 /**
  * 서버 feed를 미리 받아 Local Feed Cache를 갱신한다 (아키텍처 §6).
@@ -27,8 +28,12 @@ export async function runRefresh(): Promise<void> {
     if (!config.installations[agentType]) {
       const record = await registerInstallation(config, agentType);
       if (record) {
+        await withPingletLock(() => {
+          const current = loadConfig();
+          current.installations[agentType] = record;
+          saveConfig(current);
+        });
         config.installations[agentType] = record;
-        saveConfig(config);
       }
     }
   }
@@ -41,21 +46,23 @@ export async function runRefresh(): Promise<void> {
   );
   const online = onlineCounts.find((n): n is number => n !== null);
   if (online !== undefined) {
-    saveOnline(online);
+    await withPingletLock(() => saveOnline(online));
   }
 
   const messages = await fetchFeed(config, records[0]);
   if (messages) {
-    saveFeedMessages(messages);
-    // spinner 회전과 DELIVERED/QUALIFIED 기록은 statusline이 담당한다 (pool=1).
-    // 여기서는 armed된 메시지가 서버에서 사라진 경우만 즉시 정리한다.
-    const state = loadState();
-    const current = state.current;
-    if (current && !messages.some((m) => m.id === current.messageId)) {
-      armSpinnerMessage(config, messages[0] ?? null);
-      state.current = undefined; // 다음 statusline tick이 정식으로 다음 메시지를 armed한다
-      saveState(state);
-    }
+    await withPingletLock(() => {
+      saveFeedMessages(messages);
+      // spinner 회전과 DELIVERED/QUALIFIED 기록은 statusline이 담당한다 (pool=1).
+      // 여기서는 armed된 메시지가 서버에서 사라진 경우만 즉시 정리한다.
+      const state = loadState();
+      const current = state.current;
+      if (current && !messages.some((m) => m.id === current.messageId)) {
+        armSpinnerMessage(loadConfig(), messages[0] ?? null);
+        state.current = undefined; // 다음 statusline tick이 정식으로 다음 메시지를 armed한다
+        saveState(state);
+      }
+    });
   }
 
   // 하루 1회 새 버전 확인 후 npm 전역 설치면 백그라운드 자동 업데이트.

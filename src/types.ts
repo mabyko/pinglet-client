@@ -21,6 +21,11 @@ export interface FeedCacheFile {
 export interface QueuedEvent {
   eventId: string;
   agentType: AgentType;
+  /** Local routing identity; never upload an old installation's event as a new one. */
+  installationId?: string;
+  /** Local-only diagnostics for malformed queue lines; never sent to the API. */
+  queueError?: string;
+  rawLine?: string;
   type: EventType;
   messageId: string;
   visibleMs?: number;
@@ -28,6 +33,7 @@ export interface QueuedEvent {
 }
 
 export interface RuntimeState {
+  claudeInstallationId?: string;
   /** 현재 spinner에 armed된 메시지 (pool=1 회전) */
   current?: {
     messageId: string;

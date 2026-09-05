@@ -13,7 +13,7 @@ const { runLogin } = require('../dist/commands/login');
 const claude = require('../dist/adapters/claude');
 const cache = require('../dist/cache');
 const api = require('../dist/api');
-const { withPingletLock } = require('../dist/lock');
+const { withPingletLock, withCommandLock } = require('../dist/lock');
 const settingsPath = path.join(testHome, '.claude/settings.json');
 const originalFetch = global.fetch;
 const reply = (body, status = 200) => new Response(JSON.stringify(body), { status });
@@ -32,7 +32,7 @@ after(() => { global.fetch = originalFetch; fs.rmSync(testHome, { recursive: tru
 test('uninstall restores settings, revokes credentials and only then purges', async () => {
   const calls = [];
   global.fetch = async (url, options) => { calls.push([url, options.method]); return reply({ revoked: true }); };
-  await withPingletLock(() => runUninstall(['--purge']));
+  await withCommandLock(() => runUninstall(['--purge']));
   assert.equal(fs.existsSync(config.PINGLET_DIR), false);
   assert.equal(JSON.parse(fs.readFileSync(settingsPath)).statusLine.command, 'original');
   assert.deepEqual(calls.map(c => c[0].split('/').pop()), ['current', 'logout']);

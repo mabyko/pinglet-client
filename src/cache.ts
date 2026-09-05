@@ -3,6 +3,8 @@ import {
   ONLINE_PATH,
   POSTS_PATH,
   STATE_PATH,
+  CONFIG_PATH,
+  PingletConfig,
   readJsonFile,
   writeJsonFile,
 } from "./config";
@@ -47,12 +49,17 @@ export function feedAgeMs(): number | null {
 }
 
 export function loadState(): RuntimeState {
-  const state = readJsonFile<RuntimeState>(STATE_PATH);
-  if (state) {
-    state.seen ??= {};
-    return state;
+  const state = readJsonFile<RuntimeState>(STATE_PATH) ?? { seen: {} };
+  const installationId = readJsonFile<PingletConfig>(CONFIG_PATH)?.installations?.CLAUDE?.installationId;
+  if (state.claudeInstallationId && state.claudeInstallationId !== installationId) {
+    state.seen = {};
+    state.delivered = {};
+    state.current = undefined;
+    state.sessions = undefined;
   }
-  return { seen: {} };
+  state.claudeInstallationId = installationId;
+  state.seen ??= {};
+  return state;
 }
 
 export function loadMyPosts(): MyPostRecord[] {

@@ -10,12 +10,13 @@ export const FLUSH_INTERVAL_MS = 60_000; // batch 전송 주기
 export const FLUSH_COUNT = 20; // 또는 이벤트 개수 기준
 export const FEED_TTL_MS = 5 * 60_000; // feed 캐시 갱신 주기
 
-function spawnDetachedCommand(args: string[]): void {
+export function spawnDetachedCommand(args: string[]): void {
   try {
     const child = spawn(process.execPath, [cliPath(), ...args], {
       detached: true,
       stdio: "ignore",
     });
+    child.on("error", () => {});
     child.unref();
   } catch {
     // 백그라운드 작업 실패는 렌더링에 영향을 주면 안 된다.

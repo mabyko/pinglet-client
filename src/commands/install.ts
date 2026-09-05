@@ -10,6 +10,7 @@ import {
 import { detectCodex, installCodexIntegration } from "../adapters/codex";
 import { AgentType } from "../types";
 import { t } from "../i18n";
+import { withPingletLock } from "../lock";
 
 /**
  * 기존 설정 교체 확인. Enter 또는 y면 진행(기본 Yes — 설치 의도가 명확하므로).
@@ -46,7 +47,11 @@ export async function runInstall(args: string[]): Promise<void> {
   const apiIndex = args.indexOf("--api");
   if (apiIndex !== -1 && args[apiIndex + 1]) {
     config.apiBaseUrl = args[apiIndex + 1].replace(/\/$/, "");
-    saveConfig(config);
+    await withPingletLock(() => {
+      const current = loadConfig();
+      current.apiBaseUrl = config.apiBaseUrl;
+      saveConfig(current);
+    });
   }
 
   console.log("");
@@ -75,17 +80,21 @@ export async function runInstall(args: string[]): Promise<void> {
     if (config.installations[agentType] || !online) return;
     const record = await registerInstallation(config, agentType);
     if (record) {
+      await withPingletLock(() => {
+        const current = loadConfig();
+        current.installations[agentType] = record;
+        saveConfig(current);
+      });
       config.installations[agentType] = record;
-      saveConfig(config);
     }
   };
 
   if (hasClaude) {
     await register("CLAUDE");
-    let result = installClaudeIntegration(config, { force });
+    let result = (await withPingletLock(() => installClaudeIntegration(loadConfig(), { force })))!;
     if (!result.ok && result.needsForce) {
       const yes = await confirmReplace(t("install.askReplaceStatusLine"));
-      if (yes) result = installClaudeIntegration(config, { force: true });
+      if (yes) result = (await withPingletLock(() => installClaudeIntegration(loadConfig(), { force: true })))!;
     }
     console.log(
       result.ok
@@ -96,10 +105,10 @@ export async function runInstall(args: string[]): Promise<void> {
 
   if (hasCodex) {
     await register("CODEX");
-    let result = installCodexIntegration(config, { force });
+    let result = (await withPingletLock(() => installCodexIntegration(loadConfig(), { force })))!;
     if (!result.ok && result.needsForce) {
       const yes = await confirmReplace(t("install.askReplaceNotify"));
-      if (yes) result = installCodexIntegration(config, { force: true });
+      if (yes) result = (await withPingletLock(() => installCodexIntegration(loadConfig(), { force: true })))!;
     }
     console.log(
       result.ok
@@ -113,10 +122,10 @@ export async function runInstall(args: string[]): Promise<void> {
   if (online && record) {
     const messages = await fetchFeed(config, record);
     if (messages) {
-      saveFeedMessages(messages);
+      await withPingletLock(() => saveFeedMessages(messages));
       if (messages.length > 0) {
         console.log(`✓ Feed cached (${messages.length} messages)`);
-        if (armSpinnerMessage(config, messages[0] ?? null)) {
+        if (await withPingletLock(() => armSpinnerMessage(loadConfig(), messages[0] ?? null))) {
           console.log("✓ Claude spinner synced");
         }
       }

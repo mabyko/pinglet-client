@@ -1,6 +1,7 @@
 import { loadConfig, saveConfig } from "../config";
 import { t } from "../i18n";
 import { releaseCredential } from "../api";
+import { withPingletLock } from "../lock";
 
 /**
  * Revoke the user session and unlink this device's installations before
@@ -20,7 +21,10 @@ export async function runLogout(): Promise<void> {
   if (!await releaseCredential(config, "user", config.userToken)) {
     throw new Error(t("logout.failed"));
   }
-  delete config.userToken;
-  saveConfig(config);
+  await withPingletLock(() => {
+    const current = loadConfig();
+    delete current.userToken;
+    saveConfig(current);
+  });
   console.log(t("logout.done"));
 }
