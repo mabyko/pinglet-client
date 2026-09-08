@@ -129,7 +129,7 @@ Internal commands (called by the integration):
   "slash.hudDesc": "Configure the Pinglet statusline HUD (e.g. --preset full, --hide usage, --layout compact)",
 
   // ---- hud
-  "hud.usage": `Usage: pinglet hud [options]
+  "hud.usage": `Usage: pinglet hud [options]   (the leading -- is optional: "hud essential", "hud hide memory" also work)
   --preset full|essential|minimal   Start from a preset (full = everything, minimal = model + context bar)
   --layout expanded|compact         One element per line, or everything on one line
   --show a,b   --hide a,b           Toggle elements: model, project, context, usage, model-scoped-usage, prompt-cache, cache-hit,
@@ -272,7 +272,7 @@ const ko: Record<MessageKey, Msg> = {
   "slash.logoutDesc": "Pinglet 로그인 해제 (서버 세션 폐기·이 기기의 계정 연결 해제)",
   "slash.hudDesc": "Pinglet statusline HUD 설정 (예: --preset full, --hide usage, --layout compact)",
 
-  "hud.usage": `사용법: pinglet hud [옵션]
+  "hud.usage": `사용법: pinglet hud [옵션]   (-- 는 생략해도 됩니다: "hud essential", "hud hide memory" 도 동작)
   --preset full|essential|minimal   프리셋에서 시작 (full = 전부, minimal = 모델 + 컨텍스트 바)
   --layout expanded|compact         요소마다 한 줄 / 전부 한 줄
   --show a,b   --hide a,b           요소 켜기/끄기: model, project, context, usage, model-scoped-usage, prompt-cache, cache-hit,
@@ -413,7 +413,7 @@ const ja: Record<MessageKey, Msg> = {
   "slash.logoutDesc": "Pinglet ログアウト (サーバーセッション失効・この端末のアカウント連携解除)",
   "slash.hudDesc": "Pinglet statusline HUD の設定（例: --preset full, --hide usage, --layout compact）",
 
-  "hud.usage": `使い方: pinglet hud [オプション]
+  "hud.usage": `使い方: pinglet hud [オプション]   (先頭の -- は省略可: "hud essential", "hud hide memory" も動作)
   --preset full|essential|minimal   プリセットから始める（full = すべて, minimal = モデル + コンテキストバー）
   --layout expanded|compact         要素ごとに1行 / すべて1行
   --show a,b   --hide a,b           要素の表示/非表示: model, project, context, usage, model-scoped-usage, prompt-cache, cache-hit,

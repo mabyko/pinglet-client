@@ -14,7 +14,7 @@ process.env.COLUMNS = '160';
 const config = require('../dist/config');
 const runtime = require('../dist/runtime');
 const { runStatusline, writeStatusline } = require('../dist/commands/statusline');
-const { parseHudArgs, applyHudArgs, runHud } = require('../dist/commands/hud');
+const { parseHudArgs, applyHudArgs, runHud, normalizeHudArgs } = require('../dist/commands/hud');
 const { normalizeHudConfig, DEFAULT_HUD_CONFIG, applyPreset } = require('../dist/hud/config');
 const { renderHudLines, loadHudConfig } = require('../dist/hud');
 const { parseTranscript } = require('../dist/hud/transcript');
@@ -403,6 +403,18 @@ test('pinglet hud flags update config and reject bad values', async () => {
   assert.equal(hud.showSeparators, true);
   assert.equal(hud.gitStatus.enabled, false);
   assert.equal(parseHudArgs(['--preset', 'nope', '--order', 'x', '--bogus']).errors.length, 3);
+
+  // The slash command reads better without dashes, so bare forms normalize to the same flags.
+  assert.deepEqual(normalizeHudArgs(['essential']), ['--preset', 'essential']);
+  assert.deepEqual(normalizeHudArgs(['preset', 'essential']), ['--preset', 'essential']);
+  assert.deepEqual(normalizeHudArgs(['compact']), ['--layout', 'compact']);
+  assert.deepEqual(normalizeHudArgs(['hide', 'memory,speed', 'git', 'off']), ['--hide', 'memory,speed', '--git', 'off']);
+  assert.deepEqual(normalizeHudArgs(['off']), ['--off'], 'a bare on/off toggles the HUD');
+  assert.deepEqual(normalizeHudArgs(['--git', 'off']), ['--git', 'off'], 'a flag value is never promoted');
+  assert.deepEqual(normalizeHudArgs(['--separators', 'on']), ['--separators', 'on']);
+  assert.deepEqual(parseHudArgs(['essential', 'hide', 'memory']).errors, []);
+  assert.equal(parseHudArgs(['essential', 'hide', 'memory']).preset, 'essential');
+  assert.deepEqual(parseHudArgs(['--quiet', 'minimal']).errors, [], '--quiet is tolerated');
 
   const logs = [];
   const log = console.log;

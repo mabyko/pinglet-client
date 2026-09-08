@@ -48,7 +48,43 @@ function onOff(value: string | undefined): boolean | undefined {
   return undefined;
 }
 
-export function parseHudArgs(args: string[]): ParsedArgs {
+/** 값을 하나 더 받는 플래그 — 그 뒤 토큰은 값이므로 플래그로 승격하지 않는다. */
+const VALUE_FLAGS = new Set([
+  "--preset", "--layout", "--show", "--hide", "--order", "--first-line", "--path-levels", "--separators", "--git",
+]);
+const FLAG_NAMES = new Set([
+  "preset", "layout", "show", "hide", "order", "first-line", "path-levels", "separators", "git", "on", "off", "reset",
+]);
+const LAYOUTS = new Set(["compact", "expanded"]);
+
+/**
+ * `--`를 생략한 형태를 받아 준다 — 슬래시 명령(`/pinglet-hud essential`)에서 대시를 붙이는 게
+ * 부자연스럽기 때문이다. `essential` → `--preset essential`, `preset essential` → `--preset essential`,
+ * `compact` → `--layout compact`. 값 자리(예: `--git off`)의 토큰은 그대로 둔다.
+ */
+export function normalizeHudArgs(args: string[]): string[] {
+  const out: string[] = [];
+  for (const arg of args) {
+    const previous = out[out.length - 1];
+    if (previous !== undefined && VALUE_FLAGS.has(previous)) {
+      out.push(arg);
+      continue;
+    }
+    if (arg.startsWith("--")) {
+      out.push(arg);
+      continue;
+    }
+    const bare = arg.replace(/^-+/, "").toLowerCase();
+    if (FLAG_NAMES.has(bare)) out.push(`--${bare}`);
+    else if ((PRESETS as readonly string[]).includes(bare)) out.push("--preset", bare);
+    else if (LAYOUTS.has(bare)) out.push("--layout", bare);
+    else out.push(arg);
+  }
+  return out;
+}
+
+export function parseHudArgs(rawArgs: string[]): ParsedArgs {
+  const args = normalizeHudArgs(rawArgs);
   const parsed: ParsedArgs = { show: [], hide: [], reset: false, errors: [] };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -116,6 +152,9 @@ export function parseHudArgs(args: string[]): ParsedArgs {
         break;
       case "--reset":
         parsed.reset = true;
+        break;
+      case "--quiet":
+        // cli가 이미 걸러 내지만, 사용자가 직접 넘긴 경우에도 오류로 만들지 않는다.
         break;
       default:
         parsed.errors.push(t("hud.unknownArg", { value: arg }));
