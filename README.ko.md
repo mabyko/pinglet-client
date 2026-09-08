@@ -68,8 +68,7 @@ statusline 언어는 시스템 언어에 따라 자동 선택됩니다(한국어
 ```
 🟢 지금 41개 터미널과 함께 코딩 중
 [Opus 5 ◑ high] │ my-project git:(main* ↑2 [+337 -29]) │ 자문 모델: Opus 4.7 │ ⏱ 56m │ 비용 $1.23 │ 출력: 42.1 tok/s
-컨텍스트 ████░░░░░░ 45% │ 사용량 ███░░░░░░░ 31% (리셋까지 1h 7m) | 주간 █████████░ 85% (리셋까지 2d 7h) | Fable ████░░░░░░ 38% (리셋까지 3d)
-캐시 ⏱ 만료 22:12 · 히트 98%
+컨텍스트 ████░░░░░░ 45% │ 사용량 ███░░░░░░░ 31% (리셋까지 1h 7m) | 주간 █████████░ 85% (리셋까지 2d 7h) │ 캐시 ⏱ 만료 22:12 · 히트 98%
 RAM █████░░░░░ 23 GB / 48 GB (48%)
 ◐ Edit: .../file.ts | ✓ Bash ×12 | ✓ Read ×3
 ✓ 스킬 (2): pinglet, code-review
@@ -83,12 +82,13 @@ RAM █████░░░░░ 23 GB / 48 GB (48%)
 캐시 줄의 히트율은 마지막 요청에서 캐시로 읽은 토큰의 비율(cache_read / 전체 입력)이라, 캐시가 만료돼 새로 쓴 턴에서 뚝 떨어집니다. prompt cache는 카운트다운이 아니라 만료 시각으로 보여줍니다. statusline은 Claude가 활동할 때만 다시 그려져서
 턴 사이에는 남은 시간이 멈춘 채 보이기 때문입니다. RAM은 Claude 프로세스가 아니라 기기 전체 수치입니다.
 터미널 폭을 넘는 줄은 구분자(`│`, `|`)에서 다음 줄로 감깁니다.
+컨텍스트·사용량·캐시는 기본적으로 한 줄로 묶이며(`display.mergeGroups`), 폭이 모자라면 자동으로 나뉩니다.
 
 무엇을, 어떤 순서로, 몇 줄에 보여줄지는 `pinglet hud`로 바꿉니다 (Claude Code 안에서는 `/pinglet-hud`):
 
 ```bash
 pinglet hud                            # 현재 설정 + 미리보기
-pinglet hud --preset minimal           # full / essential / minimal
+pinglet hud --preset minimal           # full(전부) / essential(모델·프로젝트·컨텍스트·사용량·캐시·활동) / minimal(모델+컨텍스트)
 pinglet hud --layout compact           # 한 줄로 (expanded는 요소마다 한 줄)
 pinglet hud --hide usage,todos         # --show 로 다시 켜기 (speed, effort, session-tokens, compactions, git-files 등)
 pinglet hud --order context,project    # 줄 순서 (뺀 요소는 숨김)

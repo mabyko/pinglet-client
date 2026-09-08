@@ -180,15 +180,41 @@ test('transcript parser tracks skills, advisor, prompt cache anchor, compactions
   assert.equal((await parseTranscript(transcriptPath)).ultracodeActive, false, '/effort output wins in file order');
 });
 
-test('expanded layout renders project, context/usage, cache, tools, agents and todos lines', async () => {
+test('expanded layout renders project, context/usage/cache, tools, agents and todos lines', async () => {
+  // context, usage and promptCache share a merge group: one line when the width allows, stacked when not.
   const lines = await render({ display: quiet, gitStatus: { enabled: false } });
-  assert.equal(lines.length, 6, lines.join('\n'));
+  assert.equal(lines.length, 7, lines.join('\n'));
   assert.equal(lines[0], '[Opus 5 (1M context)] │ project │ fix-auth-bug │ ⏱ 30m │ Cost $1.50');
-  assert.equal(lines[1], 'Context █████████░ 88% (in: 150k, cache: 26k) │ Usage ███░░░░░░░ 25% (resets in 1h 30m) | Weekly █████████░ 90% (resets in 2d)');
-  assert.equal(lines[2], 'Cache ⏱ until 12:04 PM · hit 83%', 'default 5-minute TTL from the 11:59:30 anchor');
-  assert.equal(lines[3], '◐ Bash: npm test | ✓ Read ×1');
-  assert.equal(lines[4], '✓ Explore [haiku-4.5]: Find callers (30s)');
-  assert.equal(lines[5], '▸ Fix bug (1/3)');
+  assert.equal(lines[1], 'Context █████████░ 88% (in: 150k, cache: 26k)');
+  assert.equal(lines[2], 'Usage ███░░░░░░░ 25% (resets in 1h 30m) | Weekly █████████░ 90% (resets in 2d)');
+  assert.equal(lines[3], 'Cache ⏱ until 12:04 PM · hit 83%', 'default 5-minute TTL from the 11:59:30 anchor');
+  assert.equal(lines[4], '◐ Bash: npm test | ✓ Read ×1');
+  assert.equal(lines[5], '✓ Explore [haiku-4.5]: Find callers (30s)');
+  assert.equal(lines[6], '▸ Fix bug (1/3)');
+
+  process.env.COLUMNS = '220';
+  try {
+    const wide = await render({ display: quiet, gitStatus: { enabled: false } });
+    assert.equal(wide.length, 5, wide.join('\n'));
+    assert.equal(wide[1], 'Context █████████░ 88% (in: 150k, cache: 26k) │ Usage ███░░░░░░░ 25% (resets in 1h 30m) | Weekly █████████░ 90% (resets in 2d) │ Cache ⏱ until 12:04 PM · hit 83%');
+  } finally { process.env.COLUMNS = '160'; }
+});
+
+test('the essential preset keeps usage and the cache line, and merges them with context', async () => {
+  const essential = applyPreset(DEFAULT_HUD_CONFIG, 'essential');
+  assert.equal(essential.display.showUsage, true);
+  assert.equal(essential.display.showPromptCache, true);
+  assert.equal(essential.display.showCacheHitRate, true);
+  assert.equal(essential.display.showMemoryUsage, false);
+  assert.equal(essential.display.showSpeed, false);
+  assert.equal(essential.display.showSessionTokens, false);
+  assert.deepEqual(essential.display.mergeGroups, [['context', 'usage', 'promptCache']], 'a preset restores the default grouping');
+  process.env.COLUMNS = '220';
+  try {
+    const lines = (await renderHudLines(essential, payload, now)).map(stripAnsi);
+    assert.equal(lines[1], 'Context █████████░ 88% (in: 150k, cache: 26k) │ Usage ███░░░░░░░ 25% (resets in 1h 30m) | Weekly █████████░ 90% (resets in 2d) │ Cache ⏱ until 12:04 PM · hit 83%');
+    assert.ok(!lines.some(l => l.includes('Approx RAM')));
+  } finally { process.env.COLUMNS = '160'; }
 });
 
 test('session tokens, compactions and effort level render like claude-hud', async () => {

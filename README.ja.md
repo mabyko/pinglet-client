@@ -68,8 +68,7 @@ statusline の言語はシステム言語に応じて自動選択されます(�
 ```
 🟢 いま41個のターミナルと一緒にコーディング中
 [Opus 5 ◑ high] │ my-project git:(main* ↑2 [+337 -29]) │ アドバイザー: Opus 4.7 │ ⏱ 56m │ コスト $1.23 │ 出力: 42.1 tok/s
-コンテキスト ████░░░░░░ 45% │ 使用量 ███░░░░░░░ 31% (リセットまで 1h 7m) | 週間 █████████░ 85% (リセットまで 2d 7h) | Fable ████░░░░░░ 38% (リセットまで 3d)
-キャッシュ ⏱ 期限 22:12 · ヒット 98%
+コンテキスト ████░░░░░░ 45% │ 使用量 ███░░░░░░░ 31% (リセットまで 1h 7m) | 週間 █████████░ 85% (リセットまで 2d 7h) │ キャッシュ ⏱ 期限 22:12 · ヒット 98%
 RAM █████░░░░░ 23 GB / 48 GB (48%)
 ◐ Edit: .../file.ts | ✓ Bash ×12 | ✓ Read ×3
 ✓ スキル (2): pinglet, code-review
@@ -83,12 +82,13 @@ RAM █████░░░░░ 23 GB / 48 GB (48%)
 キャッシュ行のヒット率は直近リクエストの入力のうちキャッシュから読まれた割合（cache_read / 入力合計）で、キャッシュ期限切れ後に書き直したターンで大きく下がります。prompt cache はカウントダウンではなく期限時刻で表示します。statusline は Claude が動作中にしか再描画されず、
 ターン間では残り時間が止まったまま見えるためです。RAM は Claude プロセスではなく端末全体の値です。
 端末幅を超える行は区切り（`│`, `|`）で次の行に折り返します。
+コンテキスト・使用量・キャッシュは既定で1行にまとめられ（`display.mergeGroups`）、幅が足りなければ自動的に分かれます。
 
 何を・どの順で・何行に表示するかは `pinglet hud` で変更します（Claude Code 内では `/pinglet-hud`）:
 
 ```bash
 pinglet hud                            # 現在の設定 + プレビュー
-pinglet hud --preset minimal           # full / essential / minimal
+pinglet hud --preset minimal           # full(すべて) / essential(モデル・プロジェクト・コンテキスト・使用量・キャッシュ・アクティビティ) / minimal(モデル+コンテキスト)
 pinglet hud --layout compact           # 1行にまとめる（expanded は要素ごとに1行）
 pinglet hud --hide usage,todos         # --show で再表示（speed, effort, session-tokens, compactions, git-files なども）
 pinglet hud --order context,project    # 行の順序（省いた要素は非表示）

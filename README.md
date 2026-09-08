@@ -71,8 +71,7 @@ token totals and compaction count.
 ```
 🟢 coding along with 41 terminals right now
 [Opus 5 ◑ high] │ my-project git:(main* ↑2 [+337 -29]) │ Advisor: Opus 4.7 │ ⏱ 56m │ Cost $1.23 │ out: 42.1 tok/s
-Context ████░░░░░░ 45% │ Usage ███░░░░░░░ 31% (resets in 1h 7m) | Weekly █████████░ 85% (resets in 2d 7h) | Fable ████░░░░░░ 38% (resets in 3d)
-Cache ⏱ until 10:12 PM · hit 98%
+Context ████░░░░░░ 45% │ Usage ███░░░░░░░ 31% (resets in 1h 7m) | Weekly █████████░ 85% (resets in 2d 7h) │ Cache ⏱ until 10:12 PM · hit 98%
 Approx RAM █████░░░░░ 23 GB / 48 GB (48%)
 ◐ Edit: .../file.ts | ✓ Bash ×12 | ✓ Read ×3
 ✓ Skills (2): pinglet, code-review
@@ -86,14 +85,15 @@ Compactions: 1
 The hit rate on the Cache line is the share of the last request's input that was served from cache (cache_read / total input), so it drops sharply on the turn after the cache expires. The prompt cache shows an expiry time rather than a countdown: the statusline only
 repaints while Claude is active, so a countdown would freeze between turns. RAM is
 the whole machine, not the Claude process. Lines wider than the terminal wrap at
-their separators (`│`, `|`).
+their separators (`│`, `|`). Context, usage and the cache line share one row by default
+(`display.mergeGroups`) and split apart when the terminal is too narrow.
 
 Choose what to show, in which order and on how many lines with `pinglet hud`
 (`/pinglet-hud` inside Claude Code):
 
 ```bash
 pinglet hud                            # current settings + preview
-pinglet hud --preset minimal           # full / essential / minimal
+pinglet hud --preset minimal           # full (everything) / essential (model, project, context, usage, cache, activity) / minimal (model + context)
 pinglet hud --layout compact           # everything on one line (expanded = one line per element)
 pinglet hud --hide usage,todos         # --show to turn them back on (also speed, effort, session-tokens, compactions, git-files, …)
 pinglet hud --order context,project    # line order (omitted elements are hidden)

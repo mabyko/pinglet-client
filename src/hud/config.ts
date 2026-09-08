@@ -168,7 +168,8 @@ export const KNOWN_FIRST_LINE_SEGMENTS: ReadonlySet<FirstLineSegment> = new Set<
   "cost",
   "speed",
 ]);
-export const DEFAULT_MERGE_GROUPS: HudElement[][] = [["context", "usage"]];
+/** 컨텍스트·사용량·캐시는 한 줄로 묶는다 (폭이 모자라면 렌더러가 다시 나눈다). */
+export const DEFAULT_MERGE_GROUPS: HudElement[][] = [["context", "usage", "promptCache"]];
 
 /** 설정 파일에 없을 때 쓰는 기본값 — claude-hud의 "full" 프리셋과 같다. */
 export const DEFAULT_HUD_CONFIG: HudConfig = {
@@ -293,7 +294,10 @@ const PRESET_TOGGLES = [
  */
 export const PRESETS: Record<HudPreset, ReadonlySet<(typeof PRESET_TOGGLES)[number]>> = {
   full: new Set(PRESET_TOGGLES),
-  essential: new Set(["model", "project", "context", "tools", "skills", "agents", "todos", "git"] as const),
+  essential: new Set([
+    "model", "project", "context", "usage", "model-scoped-usage", "prompt-cache", "cache-hit",
+    "tools", "skills", "agents", "todos", "git",
+  ] as const),
   minimal: new Set(["model", "context"] as const),
 };
 
@@ -308,6 +312,8 @@ export function applyPreset(config: HudConfig, preset: HudPreset): HudConfig {
   const next = structuredClone(config);
   const on = PRESETS[preset];
   for (const name of PRESET_TOGGLES) setToggle(next, name, on.has(name));
+  // 프리셋은 배치까지 정하므로 병합 그룹도 기본값(컨텍스트·사용량·캐시 한 줄)으로 되돌린다.
+  next.display.mergeGroups = DEFAULT_MERGE_GROUPS.map((group) => [...group]);
   return next;
 }
 
