@@ -12,6 +12,16 @@ import { appendEvent } from "../queue";
 import { armSpinnerMessage } from "../adapters/claude";
 import { QUALIFIED_MS, ROTATE_MS, runMaintenance } from "../runtime";
 import { RuntimeState } from "../types";
+import { HudConfig, loadHudConfig, renderHudLines } from "../hud";
+import { StatuslinePayload } from "../hud/stdin";
+
+/** 잠금 안에서 끝낸 tick의 결과 — 잠금을 놓은 뒤 HUD를 그려 출력한다. */
+export interface StatuslineTick {
+  payload: StatuslinePayload;
+  /** HUD 위에 먼저 나올 줄 ("함께 코딩 중"). */
+  lines: string[];
+  hud: HudConfig;
+}
 
 /**
  * online 캐시 유효 기간 — refresh(≈5분) 2주기. 서버의 온라인 판정 창
@@ -30,14 +40,10 @@ function onlineOthers(now: number): number | null {
   return others >= 1 ? others : null;
 }
 
-interface StatuslinePayload {
-  session_id?: string;
-  cost?: { total_api_duration_ms?: number };
-}
-
 function readPayload(): StatuslinePayload {
   try {
-    return JSON.parse(fs.readFileSync(0, "utf8")) as StatuslinePayload;
+    const parsed: unknown = JSON.parse(fs.readFileSync(0, "utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as StatuslinePayload) : {};
   } catch {
     return {};
   }
@@ -124,14 +130,16 @@ function rotateSpinner(state: RuntimeState, now: number): void {
 }
 
 /**
- * Claude Code statusLine hook 진입점.
+ * Claude Code statusLine hook 진입점 (로컬 잠금 안, 동기).
  * - spinner 회전(pool=1): ROTATE_MS마다 다음 메시지를 armed (설정 핫리로드로 즉시 반영)
  * - 노출 측정: stdin payload의 cost 델타로 armed 메시지의 실제 표시 시간을 누적
- * - statusline 표시: 지금 함께 켜져 있는 터미널 수
  * - flush/refresh 백그라운드 트리거 (Claude 사용 중 항상 호출되므로 이 경로에서)
+ * 출력할 줄과 payload를 돌려주면 호출부가 잠금을 놓고 `writeStatusline`으로 HUD까지 그린다.
  */
-export function runStatusline(): void {
-  if (!fs.existsSync(CONFIG_PATH) || !loadConfig().adapters.claude) return;
+export function runStatusline(): StatuslineTick | undefined {
+  if (!fs.existsSync(CONFIG_PATH)) return undefined;
+  const config = loadConfig();
+  if (!config.adapters.claude) return undefined;
   const payload = readPayload();
   const state = loadState();
   const now = Date.now();
@@ -155,6 +163,26 @@ export function runStatusline(): void {
     saveState(state);
   }
 
+  const lines: string[] = [];
   const others = onlineOthers(now);
-  process.stdout.write(others !== null ? formatOnlineNow(others) : "");
+  if (others !== null) lines.push(formatOnlineNow(others));
+  return { payload, lines, hud: loadHudConfig(config) };
+}
+
+/**
+ * 잠금 밖에서 HUD(모델·컨텍스트·사용량·활동)를 그려 "함께 코딩 중" 줄 아래에 출력한다.
+ * HUD는 실패해도 위 줄에 영향을 주면 안 된다.
+ */
+export async function writeStatusline(
+  tick: StatuslineTick,
+  now = Date.now(),
+  write: (text: string) => void = (text) => { process.stdout.write(text); },
+): Promise<void> {
+  const lines = [...tick.lines];
+  try {
+    lines.push(...(await renderHudLines(tick.hud, tick.payload, now)));
+  } catch {
+    // 손상된 transcript·git 오류 등 — 이번 tick은 HUD 없이 그린다.
+  }
+  write(lines.join("\n"));
 }

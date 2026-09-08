@@ -37,6 +37,11 @@ export interface PingletConfig {
   userToken?: string;
   /** false면 자동 업데이트를 끈다 (기본: 켜짐, npm 전역 설치에서만 동작) */
   autoUpdate?: boolean;
+  /**
+   * statusline HUD 설정 (claude-hud와 같은 키 체계). 정규화는 hud/config.ts가 하므로
+   * 여기서는 형태만 보존한다 — `pinglet hud`로 편집한다.
+   */
+  hud?: unknown;
   /** agent별 백엔드 installation 등록 정보 (POST /installations 응답) */
   installations: Partial<Record<AgentType, InstallRecord>>;
   adapters: {
@@ -85,6 +90,7 @@ export function loadConfig(): PingletConfig {
     const object = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
     if (typeof existing.apiBaseUrl !== "string" || typeof existing.createdAt !== "string" ||
         (existing.userToken !== undefined && typeof existing.userToken !== "string") ||
+        (existing.hud !== undefined && !object(existing.hud)) ||
         (existing.installations !== undefined && !object(existing.installations)) ||
         (existing.adapters !== undefined && !object(existing.adapters))) {
       throw new Error(`Invalid ${CONFIG_PATH}; original file preserved.`);

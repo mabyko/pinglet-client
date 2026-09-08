@@ -8,7 +8,7 @@ import {
   saveOnline,
   saveState,
 } from "../cache";
-import { armSpinnerMessage } from "../adapters/claude";
+import { armSpinnerMessage, ensureSlashCommands } from "../adapters/claude";
 import { AgentType } from "../types";
 import { withPingletLock } from "../lock";
 
@@ -19,6 +19,11 @@ import { withPingletLock } from "../lock";
 export async function runRefresh(): Promise<void> {
   if (!fs.existsSync(CONFIG_PATH)) return;
   const config = loadConfig();
+  try {
+    ensureSlashCommands(config);
+  } catch {
+    // 명령 파일 보충 실패는 feed 갱신을 막지 않는다.
+  }
 
   const wanted: AgentType[] = [];
   if (config.adapters.claude) wanted.push("CLAUDE");

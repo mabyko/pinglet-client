@@ -58,6 +58,46 @@ pinglet post "メッセージ"
 
 statusline の言語はシステム言語に応じて自動選択されます(韓国語/日本語、それ以外は英語)。言語で判定できない場合はタイムゾーン(ソウル/東京)で推定します。
 
+## HUD — セッション情報を statusline に
+
+「一緒にコーディング中」の行の下に、[claude-hud](https://github.com/jarrodwatts/claude-hud) と同じ方式の HUD が表示されます。
+モデルと effort レベル、プロジェクト・git ブランチ（変更行数・未プッシュのコミット）、`/advisor` モデル、セッション時間・コスト・出力速度、
+コンテキスト使用率バー、5時間/7日/モデル別週間の使用量上限、prompt cache の期限時刻、端末の RAM 使用率、
+実行中のツール・呼び出したスキル・サブエージェント・todo の進捗、変更ファイル一覧、セッション累計トークン、圧縮回数です。
+
+```
+🟢 いま41個のターミナルと一緒にコーディング中
+[Opus 5 ◑ high] │ my-project git:(main* ↑2 [+337 -29]) │ アドバイザー: Opus 4.7 │ ⏱ 56m │ コスト $1.23 │ 出力: 42.1 tok/s
+コンテキスト ████░░░░░░ 45% │ 使用量 ███░░░░░░░ 31% (リセットまで 1h 7m) | 週間 █████████░ 85% (リセットまで 2d 7h) | Fable ████░░░░░░ 38% (リセットまで 3d)
+キャッシュ ⏱ 期限 22:12 · ヒット 98%
+RAM █████░░░░░ 23 GB / 48 GB (48%)
+◐ Edit: .../file.ts | ✓ Bash ×12 | ✓ Read ×3
+✓ スキル (2): pinglet, code-review
+◐ Explore [haiku-4.5]: 呼び出し元を探す (12s)
+▸ バグ修正 (2/5)
+~statusline.ts(+39 -11)  ~cli.ts(+15 -5)  +hud.ts(+120)  ?3
+トークン 13.7M (入力: 2k, 出力: 64k, キャッシュ: 13.7M)
+圧縮: 1
+```
+
+キャッシュ行のヒット率は直近リクエストの入力のうちキャッシュから読まれた割合（cache_read / 入力合計）で、キャッシュ期限切れ後に書き直したターンで大きく下がります。prompt cache はカウントダウンではなく期限時刻で表示します。statusline は Claude が動作中にしか再描画されず、
+ターン間では残り時間が止まったまま見えるためです。RAM は Claude プロセスではなく端末全体の値です。
+端末幅を超える行は区切り（`│`, `|`）で次の行に折り返します。
+
+何を・どの順で・何行に表示するかは `pinglet hud` で変更します（Claude Code 内では `/pinglet-hud`）:
+
+```bash
+pinglet hud                            # 現在の設定 + プレビュー
+pinglet hud --preset minimal           # full / essential / minimal
+pinglet hud --layout compact           # 1行にまとめる（expanded は要素ごとに1行）
+pinglet hud --hide usage,todos         # --show で再表示（speed, effort, session-tokens, compactions, git-files なども）
+pinglet hud --order context,project    # 行の順序（省いた要素は非表示）
+pinglet hud --first-line project,model # 1行目のセグメント順
+pinglet hud --off                      # HUD のみオフ（「一緒にコーディング中」の行は残る）
+```
+
+色・しきい値・mergeGroups などの上級キーは `~/.pinglet/config.json` の `"hud"` セクションを直接編集します（キー名は claude-hud と同じです）。
+
 ## 自動アップデート
 
 新しいバージョンが出ると、バックグラウンドで1日1回チェックして自動的に
@@ -73,6 +113,7 @@ statusline の言語はシステム言語に応じて自動選択されます(�
 | `pinglet logout` | ログアウト（連携設定・キャッシュは維持） |
 | `pinglet post "メッセージ"` | Ping を送る |
 | `pinglet ping` | いま表示されるメッセージをプレビュー |
+| `pinglet hud [オプション]` | statusline HUD の設定（プリセット・レイアウト・表示要素・順序） |
 | `pinglet doctor` | インストール・接続状態を診断 |
 | `pinglet uninstall` | 設定復元、サーバー上のインストール失効とログアウト |
 
@@ -80,8 +121,11 @@ statusline の言語はシステム言語に応じて自動選択されます(�
 
 - **トークン使用量 0** — メッセージは Claude Code の UI 領域（statusline/spinner）にのみ
   表示され、モデルのコンテキストには一切入りません。API コストや応答品質に影響はありません。
-- **コードを読みません** — prompt、応答、コード、環境変数にはアクセスしません。
-  収集するのはインストール ID、OS の種類、クライアントのバージョン、メッセージ表示イベントだけです。
+- **コードを送信しません** — サーバーに送るのはインストール ID、OS の種類、クライアントのバージョン、
+  メッセージ表示イベントだけです。HUD は Claude Code が statusline に渡すセッション指標と、
+  セッション transcript のツール名・対象・todo タイトルを**この端末内でのみ**読んで描画します。
+  prompt・応答本文は保存せず、それらが端末の外に出ることはありません。
+  活動行が不要なら `pinglet hud --hide tools,agents,todos` で transcript を一切読まなくなります。
 - **ターミナルが遅くなりません** — 表示はローカルキャッシュを読むだけで、ネットワークは
   バックグラウンドでのみ使用します。オフラインでも動作します。
 - **すべてのメッセージは審査を通ります** — URL・個人情報・制御文字・不適切な表現は

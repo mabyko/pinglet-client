@@ -47,6 +47,7 @@ codex    # turn 완료 시 macOS 알림으로 Ping 전달 (experimental)
 | `pinglet post "메시지" [--category <c>]` | 메시지 작성 (GitHub 로그인 필요, 읽기는 로그인 없이 가능) |
 | `pinglet doctor` | 설치/캐시/큐/서버 상태 진단 |
 | `pinglet ping` | 메시지 미리보기 (이벤트 기록 없음) |
+| `pinglet hud [옵션]` | statusline HUD 설정 — `--preset`, `--layout`, `--show/--hide`, `--order`, `--first-line`, `--path-levels`, `--separators`, `--git`, `--on/--off`, `--reset`. `--quiet`는 슬래시 명령용 한 줄 출력. 토글 이름은 `src/hud/config.ts`의 `TOGGLE_KEYS` |
 
 내부 명령(integration이 호출): `statusline`, `notify`, `flush`, `refresh`
 
@@ -73,6 +74,29 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
     중에도 즉시 반영된다. pool이 1개라 "spinner가 돌았다 = 이 메시지가 표시됐다"가
     확정된다. Pinglet verb는 zero-width space 마커로 식별하므로 사용자가 직접
     등록한 verb는 건드리지 않고, uninstall 시 원래대로 복원한다.
+  - **HUD (`src/hud/`)** — statusline 출력의 "함께 코딩 중" 줄 아래에
+    [claude-hud](https://github.com/jarrodwatts/claude-hud)와 같은 요소·레이아웃 규칙으로
+    세션 정보를 그린다. 같은 statusLine hook이 stdin으로 받는 payload(`model`, `effort`,
+    `context_window`, `rate_limits`(model_scoped 포함), `cost`, `cwd`, `transcript_path`)만 입력이다.
+    statusline 명령은 로컬 잠금 안에서 `runStatusline`(spinner 회전·상태 저장, 동기)을 끝내고
+    잠금을 놓은 뒤 `writeStatusline`이 HUD를 비동기로 그린다 — transcript·git 읽기가 다른 훅을 막지 않는다.
+    - `config.ts` — `~/.pinglet/config.json`의 `hud` 섹션 정규화. 키 체계는 claude-hud와 같다
+      (`lineLayout`, `elementOrder`, `projectLineOrder`, `display.*`, `gitStatus`, `colors`).
+      잘못된 값은 기본값(full 프리셋)으로 돌아가며 렌더 경로에서 예외를 내지 않는다.
+    - `transcript.ts` — transcript JSONL을 readline 스트림으로 읽어 tool_use/tool_result·Skill·Agent·
+      TodoWrite/TaskCreate/TaskUpdate, assistant 기록의 `advisorModel`, prompt cache 기준 시각(메인 대화의
+      마지막 요청 시작 시각, `usage.cache_creation`으로 5분/1시간 TTL 감지), 세션 누적 토큰(message.id로 중복 제거),
+      compact_boundary 수, ultracode 상태, 마지막 메인 대화 응답의 입력 usage(캐시 히트율용)만 추출한다. mtime+size가 같으면 `hud-cache/`를 재사용한다.
+      transcript를 쓰는 요소가 모두 꺼져 있으면 읽지 않는다.
+    - `git.ts` — 렌더마다 비동기로 `rev-parse`/`status --porcelain`/`diff --numstat`/`rev-list`/`remote get-url`을
+      실행한다 (각 1~2초 timeout, 캐시 없음 — claude-hud와 동일). 브랜치는 GitHub URL, 경로·파일은 file:// OSC 8 링크.
+    - `speed.ts` — 이전 tick의 output_tokens와 시각을 `hud-cache/speed/`에 남겨 tok/s를 계산한다 (0.5~2초 창).
+    - `memory.ts` — 기기 RAM 사용률 (macOS `vm_stat` active+wired, Linux `/proc/meminfo`, 그 외 `os`). 5초 캐시.
+    - `render.ts` — expanded(요소마다 한 줄, `mergeGroups`는 폭이 허용하면 합침, 마지막에 변경 파일·세션 토큰·압축 횟수 줄) /
+      compact(세션 한 줄 + 활동 줄). 터미널 폭(`COLUMNS` → stdout.columns → `maxWidth`)을 넘는 줄은
+      `width.ts`가 구분자(" │ ", " | ")에서 감고, 한 세그먼트가 그 자체로 넘치면 말줄임표로 자른다.
+    - 슬래시 명령 `/pinglet-hud`는 `pinglet hud --quiet`를 호출한다. refresh가 누락된 명령 파일을
+      보충하므로 postinstall 없이 자동 업데이트된 설치에도 새 명령이 생긴다.
 - **Codex Adapter (experimental)** — `~/.codex/config.toml`의 `notify` hook에 연결.
   notify는 TUI 밖 프로세스라 터미널 안에 그릴 수 없어, MVP에서는 turn 완료 시
   macOS 알림으로 전달한다.
@@ -110,8 +134,10 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   occurredAt은 2000년 이후~현재+5분 범위이며 오래된 오프라인 기록은 허용한다.
 - **게시 재시도** — 응답 유실 뒤 401/429가 와도 requestId를 버리지 않는다.
   동일 계정의 JWT가 바뀌어도 키를 유지하고 확정 응답을 받은 뒤에만 정리한다.
-- **Privacy** — prompt/응답/코드/환경변수를 읽지 않는다. 수집하는 것은
-  installationId, agentType, OS, clientVersion, 메시지 delivery 이벤트뿐이다.
+- **Privacy** — 서버로 보내는 것은 installationId, agentType, OS, clientVersion,
+  메시지 delivery 이벤트뿐이다. HUD가 로컬에서 읽는 statusline payload와 transcript의
+  도구 이름·대상·todo 제목은 `hud-cache/`에만 남고 전송되지 않는다. prompt/응답 본문은
+  파싱 결과에 포함하지 않는다.
 
 ## 백엔드 API 사용 (pinglet-backend)
 
@@ -136,6 +162,7 @@ install 시 `~/.claude/commands/pinglet.md` slash command가 함께 설치되며
   feed.json      # Local Feed Cache
   state.json     # 현재 표시 중 메시지, seen 카운트, flush/refresh 타이밍
   events.jsonl   # Local Event Queue (append-only)
+  hud-cache/     # HUD용 transcript 파싱 결과(경로 해시별)·RAM·출력 속도 캐시 — 삭제해도 무방
 ```
 
 ## 안내 문구 언어

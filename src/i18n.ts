@@ -24,6 +24,7 @@ Usage: pinglet <command>
   post "message" [--category <c>]   Post a message (login required; reading is anonymous)
   doctor                            Diagnose install / cache / server status
   ping                              Preview a message
+  hud [options]                     Configure the statusline HUD (preset / layout / show / hide / order)
 
 Internal commands (called by the integration):
   statusline                        Claude Code statusLine hook
@@ -125,6 +126,38 @@ Internal commands (called by the integration):
   "slash.postDesc": "Post a message to Pinglet so it shows in other developers' terminals",
   "slash.loginDesc": "Link your Pinglet account (GitHub or Google login in the browser; --github/--google to choose)",
   "slash.logoutDesc": "Sign out of Pinglet (revoke this session and unlink this device)",
+  "slash.hudDesc": "Configure the Pinglet statusline HUD (e.g. --preset full, --hide usage, --layout compact)",
+
+  // ---- hud
+  "hud.usage": `Usage: pinglet hud [options]
+  --preset full|essential|minimal   Start from a preset (full = everything, minimal = model + context bar)
+  --layout expanded|compact         One element per line, or everything on one line
+  --show a,b   --hide a,b           Toggle elements: model, project, context, usage, model-scoped-usage, prompt-cache, cache-hit,
+                                    memory, tools, skills, agents, todos, advisor, session-name, duration, cost, speed,
+                                    effort, session-tokens, compactions, git, git-dirty, git-ahead-behind, git-files,
+                                    token-breakdown, usage-bar, reset-label, usage-compact
+  --order project,context,...       Line order (expanded): project, context, usage, promptCache, memory, tools, skills,
+                                    agents, todos — omit an element to hide its line
+  --first-line model,project,...    Segment order inside the first line (model, project, advisor, sessionName, duration, cost, speed)
+  --path-levels 1|2|3|full          How many directory segments to show
+  --separators on|off  --git on|off
+  --on | --off                      Turn the HUD on/off (the "coding along" line stays)
+  --reset                           Back to defaults
+  Advanced keys (colors, thresholds, mergeGroups) live in ~/.pinglet/config.json under "hud".`,
+  "hud.current": "Current HUD settings:",
+  "hud.saved": "✓ HUD settings saved (applies on the next statusline refresh):",
+  "hud.savedQuiet": (p: P) => `✓ HUD settings saved — layout: ${p.layout}, enabled: ${p.enabled}`,
+  "hud.preview": "Preview:",
+  "hud.previewEmpty": "(HUD is off — nothing to show)",
+  "hud.badPreset": (p: P) => `unknown preset "${p.value}" (full | essential | minimal)`,
+  "hud.badLayout": (p: P) => `unknown layout "${p.value}" (expanded | compact)`,
+  "hud.badToggle": (p: P) => `unknown element "${p.value}"`,
+  "hud.badOrder": (p: P) => `invalid --order${p.value ? ` (unknown: ${p.value})` : ""} — use project, context, usage, promptCache, memory, tools, skills, agents, todos`,
+  "hud.badFirstLine": (p: P) => `invalid --first-line (unknown: ${p.value}) — use model, project, advisor, sessionName, duration, cost, speed`,
+  "hud.badPathLevels": (p: P) => `invalid --path-levels "${p.value}" (1 | 2 | 3 | full)`,
+  "hud.badOnOff": (p: P) => `${p.flag} expects on or off`,
+  "hud.unknownArg": (p: P) => `unknown option "${p.value}"`,
+  "doctor.hud": (p: P) => `HUD: ${p.enabled} (${p.layout}) — change with \`pinglet hud\``,
 } satisfies Record<string, Msg>;
 
 export type MessageKey = keyof typeof en;
@@ -144,6 +177,7 @@ const ko: Record<MessageKey, Msg> = {
   post "메시지" [--category <c>]     메시지 작성 (로그인 필요, 읽기는 익명 가능)
   doctor                            설치/캐시/서버 상태 진단
   ping                              메시지 미리보기
+  hud [옵션]                        statusline HUD 설정 (프리셋 / 레이아웃 / 표시 / 숨김 / 순서)
 
 내부 명령 (integration이 호출):
   statusline                        Claude Code statusLine hook
@@ -236,6 +270,37 @@ const ko: Record<MessageKey, Msg> = {
   "slash.postDesc": "메시지를 Pinglet에 등록해 다른 개발자들의 터미널에 표시",
   "slash.loginDesc": "Pinglet 계정 연결 (브라우저에서 GitHub 또는 Google 로그인, --github/--google로 지정 가능)",
   "slash.logoutDesc": "Pinglet 로그인 해제 (서버 세션 폐기·이 기기의 계정 연결 해제)",
+  "slash.hudDesc": "Pinglet statusline HUD 설정 (예: --preset full, --hide usage, --layout compact)",
+
+  "hud.usage": `사용법: pinglet hud [옵션]
+  --preset full|essential|minimal   프리셋에서 시작 (full = 전부, minimal = 모델 + 컨텍스트 바)
+  --layout expanded|compact         요소마다 한 줄 / 전부 한 줄
+  --show a,b   --hide a,b           요소 켜기/끄기: model, project, context, usage, model-scoped-usage, prompt-cache, cache-hit,
+                                    memory, tools, skills, agents, todos, advisor, session-name, duration, cost, speed,
+                                    effort, session-tokens, compactions, git, git-dirty, git-ahead-behind, git-files,
+                                    token-breakdown, usage-bar, reset-label, usage-compact
+  --order project,context,...       줄 순서 (expanded): project, context, usage, promptCache, memory, tools, skills,
+                                    agents, todos — 뺀 요소는 줄이 사라진다
+  --first-line model,project,...    첫 줄 안의 세그먼트 순서 (model, project, advisor, sessionName, duration, cost, speed)
+  --path-levels 1|2|3|full          경로를 몇 단계까지 보여줄지
+  --separators on|off  --git on|off
+  --on | --off                      HUD 켜기/끄기 ("함께 코딩 중" 줄은 유지)
+  --reset                           기본값으로
+  색상·임계값·mergeGroups 등 고급 키는 ~/.pinglet/config.json의 "hud"에서 직접 편집한다.`,
+  "hud.current": "현재 HUD 설정:",
+  "hud.saved": "✓ HUD 설정을 저장했습니다 (다음 statusline 갱신부터 적용):",
+  "hud.savedQuiet": (p) => `✓ HUD 설정 저장 — layout: ${p.layout}, enabled: ${p.enabled}`,
+  "hud.preview": "미리보기:",
+  "hud.previewEmpty": "(HUD가 꺼져 있어 표시할 내용이 없습니다)",
+  "hud.badPreset": (p) => `알 수 없는 프리셋 "${p.value}" (full | essential | minimal)`,
+  "hud.badLayout": (p) => `알 수 없는 레이아웃 "${p.value}" (expanded | compact)`,
+  "hud.badToggle": (p) => `알 수 없는 요소 "${p.value}"`,
+  "hud.badOrder": (p) => `--order 값이 잘못됐습니다${p.value ? ` (알 수 없음: ${p.value})` : ""} — project, context, usage, promptCache, memory, tools, skills, agents, todos 중에서`,
+  "hud.badFirstLine": (p) => `--first-line 값이 잘못됐습니다 (알 수 없음: ${p.value}) — model, project, advisor, sessionName, duration, cost, speed 중에서`,
+  "hud.badPathLevels": (p) => `--path-levels 값이 잘못됐습니다 "${p.value}" (1 | 2 | 3 | full)`,
+  "hud.badOnOff": (p) => `${p.flag}는 on 또는 off를 받습니다`,
+  "hud.unknownArg": (p) => `알 수 없는 옵션 "${p.value}"`,
+  "doctor.hud": (p) => `HUD: ${p.enabled} (${p.layout}) — 변경은 \`pinglet hud\``,
 };
 
 const ja: Record<MessageKey, Msg> = {
@@ -253,6 +318,7 @@ const ja: Record<MessageKey, Msg> = {
   post "メッセージ" [--category <c>]  メッセージ投稿 (ログイン必要、閲覧は匿名可)
   doctor                            インストール/キャッシュ/サーバー状態を診断
   ping                              メッセージのプレビュー
+  hud [オプション]                  statusline HUD 設定（プリセット / レイアウト / 表示 / 非表示 / 順序）
 
 内部コマンド (integration が呼び出す):
   statusline                        Claude Code statusLine hook
@@ -345,6 +411,37 @@ const ja: Record<MessageKey, Msg> = {
   "slash.postDesc": "メッセージを Pinglet に投稿して他の開発者のターミナルに表示",
   "slash.loginDesc": "Pinglet アカウント連携 (ブラウザで GitHub または Google ログイン、--github/--google で指定可)",
   "slash.logoutDesc": "Pinglet ログアウト (サーバーセッション失効・この端末のアカウント連携解除)",
+  "slash.hudDesc": "Pinglet statusline HUD の設定（例: --preset full, --hide usage, --layout compact）",
+
+  "hud.usage": `使い方: pinglet hud [オプション]
+  --preset full|essential|minimal   プリセットから始める（full = すべて, minimal = モデル + コンテキストバー）
+  --layout expanded|compact         要素ごとに1行 / すべて1行
+  --show a,b   --hide a,b           要素の表示/非表示: model, project, context, usage, model-scoped-usage, prompt-cache, cache-hit,
+                                    memory, tools, skills, agents, todos, advisor, session-name, duration, cost, speed,
+                                    effort, session-tokens, compactions, git, git-dirty, git-ahead-behind, git-files,
+                                    token-breakdown, usage-bar, reset-label, usage-compact
+  --order project,context,...       行の順序（expanded）: project, context, usage, promptCache, memory, tools, skills,
+                                    agents, todos — 省いた要素の行は消える
+  --first-line model,project,...    1行目のセグメント順（model, project, advisor, sessionName, duration, cost, speed）
+  --path-levels 1|2|3|full          パスを何階層まで表示するか
+  --separators on|off  --git on|off
+  --on | --off                      HUD のオン/オフ（「一緒にコーディング中」の行は残る）
+  --reset                           既定値に戻す
+  色・しきい値・mergeGroups などの上級キーは ~/.pinglet/config.json の "hud" を直接編集する。`,
+  "hud.current": "現在の HUD 設定:",
+  "hud.saved": "✓ HUD 設定を保存しました（次の statusline 更新から反映）:",
+  "hud.savedQuiet": (p) => `✓ HUD 設定を保存 — layout: ${p.layout}, enabled: ${p.enabled}`,
+  "hud.preview": "プレビュー:",
+  "hud.previewEmpty": "(HUD がオフのため表示する内容がありません)",
+  "hud.badPreset": (p) => `不明なプリセット "${p.value}" (full | essential | minimal)`,
+  "hud.badLayout": (p) => `不明なレイアウト "${p.value}" (expanded | compact)`,
+  "hud.badToggle": (p) => `不明な要素 "${p.value}"`,
+  "hud.badOrder": (p) => `--order が不正です${p.value ? `（不明: ${p.value}）` : ""} — project, context, usage, promptCache, memory, tools, skills, agents, todos から指定`,
+  "hud.badFirstLine": (p) => `--first-line が不正です（不明: ${p.value}）— model, project, advisor, sessionName, duration, cost, speed から指定`,
+  "hud.badPathLevels": (p) => `--path-levels が不正です "${p.value}" (1 | 2 | 3 | full)`,
+  "hud.badOnOff": (p) => `${p.flag} は on または off を受け取ります`,
+  "hud.unknownArg": (p) => `不明なオプション "${p.value}"`,
+  "doctor.hud": (p) => `HUD: ${p.enabled} (${p.layout}) — 変更は \`pinglet hud\``,
 };
 
 const tables: Record<DisplayLocale, Record<MessageKey, Msg>> = { en, ko, ja };

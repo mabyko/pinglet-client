@@ -9,6 +9,7 @@ import {
 } from "../adapters/claude";
 import { detectCodex, isCodexIntegrationInstalled } from "../adapters/codex";
 import { t } from "../i18n";
+import { loadHudConfig } from "../hud";
 
 const ok = (label: string) => console.log(`✓ ${label}`);
 const warn = (label: string) => console.log(`○ ${label}`);
@@ -33,6 +34,8 @@ export async function runDoctor(): Promise<void> {
       } else {
         warn(t("doctor.spinnerMissing"));
       }
+      const hud = loadHudConfig(config);
+      ok(t("doctor.hud", { enabled: hud.enabled ? "on" : "off", layout: hud.lineLayout }));
     } else warn(t("doctor.claudeNotInstalled"));
   } else {
     warn("Claude Code not found");

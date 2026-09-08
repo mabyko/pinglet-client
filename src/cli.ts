@@ -5,11 +5,12 @@ import { runUninstall } from "./commands/uninstall";
 import { runDoctor } from "./commands/doctor";
 import { runLogin } from "./commands/login";
 import { runLogout } from "./commands/logout";
-import { runStatusline } from "./commands/statusline";
+import { runStatusline, writeStatusline } from "./commands/statusline";
 import { runFlush } from "./commands/flush";
 import { runRefresh } from "./commands/refresh";
 import { runPing } from "./commands/ping";
 import { runPost } from "./commands/post";
+import { runHud } from "./commands/hud";
 import { t } from "./i18n";
 import { withPingletLock, withCommandLock } from "./lock";
 import { enqueueNotification, drainNotifications } from "./notifications";
@@ -42,9 +43,16 @@ async function main(): Promise<void> {
     case "ping":
       runPing();
       break;
-    case "statusline":
-      runStatusline();
+    case "hud": {
+      const quiet = rest.includes("--quiet");
+      await runHud(rest.filter((arg) => arg !== "--quiet"), { quiet });
       break;
+    }
+    case "statusline": {
+      const tick = runStatusline();
+      if (tick) await writeStatusline(tick);
+      break;
+    }
     case "flush":
       await runFlush();
       break;
@@ -80,10 +88,12 @@ async function dispatch(): Promise<void> {
     return;
   }
   if (command === "notify-drain" || command === "statusline") {
-    await withPingletLock(() => {
+    // 잠금은 상태 파일 읽기/쓰기 구간만 보호한다. transcript·git을 읽는 HUD 렌더는 잠금 밖에서.
+    const tick = await withPingletLock(() => {
       drainNotifications();
-      if (command === "statusline") runStatusline();
+      return command === "statusline" ? runStatusline() : undefined;
     }, { skipIfBusy: command === "statusline" });
+    if (tick) await writeStatusline(tick);
     return;
   }
   if (["--version", "-v", "help", "--help"].includes(command)) { await main(); return; }
