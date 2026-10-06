@@ -9,7 +9,9 @@ export interface FeedMessage {
   author: string;
   category?: string | null;
   expiresAt?: string | null;
-  contentType: "USER" | "SYSTEM" | "SPONSORED";
+  contentType: "USER" | "SYSTEM" | "SPONSORED" | "NEWS";
+  /** NEWS 원문 링크 — fetchFeed에서 http(s)·제어 문자 없음을 검증한 값만 들어온다. */
+  url?: string | null;
 }
 
 export interface FeedCacheFile {
@@ -39,6 +41,7 @@ export interface RuntimeState {
     messageId: string;
     text: string;
     author: string;
+    url?: string | null;
     shownAt: number; // epoch ms
     /** 이 메시지가 armed된 동안 spinner가 실제로 돈 시간(ms) — cost 델타로 측정 */
     visibleMs?: number;

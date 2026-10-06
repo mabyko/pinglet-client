@@ -391,21 +391,38 @@ test('memory line renders machine RAM in expanded layout only', async () => {
   assert.match(live[0] ?? 'Approx RAM missing', /^Approx RAM [█░]+ [\d.]+ [KMGT]?B \/ [\d.]+ [KMGT]?B \(\d{1,3}%\)$/);
 });
 
-test('statusline prints the online line first and the HUD below it', async () => {
-  fs.writeFileSync(config.ONLINE_PATH, JSON.stringify({ onlineInstallations: 42, updatedAt: new Date(now).toISOString() }));
+test('statusline prints the armed news link first and the HUD below it', async () => {
+  const news = { id: 'n1', text: 'Show HN: a tiny terminal', author: 'x', contentType: 'NEWS', url: 'https://example.com/a?b=1' };
+  fs.writeFileSync(config.FEED_PATH, JSON.stringify({ fetchedAt: new Date(now).toISOString(), messages: [news] }));
   const lines = await tick(payload);
-  assert.equal(lines[0], '🟢 coding along with 41 terminals right now');
+  assert.equal(lines[0], '📰 Show HN: a tiny terminal');
   assert.match(lines[1], /^\[Opus 5 \(1M context\)\] │ project/);
   assert.ok(lines.length >= 4, lines.join('\n'));
   const saved = config.loadConfig();
   saved.hud = { enabled: false };
   config.saveConfig(saved);
-  assert.deepEqual(await tick(payload), ['🟢 coding along with 41 terminals right now']);
+  assert.deepEqual(await tick(payload), ['📰 Show HN: a tiny terminal']);
   // A broken transcript never breaks the tick.
   saved.hud = { enabled: true };
   config.saveConfig(saved);
   fs.writeFileSync(transcriptPath, '{not json\n');
   assert.match((await tick(payload, now + 10000))[1], /^\[Opus 5/);
+});
+
+test('news link line is an OSC 8 hyperlink and drops unsafe urls', () => {
+  const { formatNewsLink } = require('../dist/render');
+  const { safeLinkUrl } = require('../dist/api');
+  assert.equal(formatNewsLink('Title', 'https://example.com/x'),
+    `${ESC}]8;;https://example.com/x${ESC}\\📰 Title${ESC}]8;;${ESC}\\`);
+  // Title escapes are stripped before wrapping, so they cannot end the link early.
+  assert.equal(stripAnsi(formatNewsLink(`a${ESC}]8;;${ESC}\\b`, 'https://example.com')), '📰 a]8;;\\b');
+  assert.equal(formatNewsLink('Title', null), '📰 Title');
+  assert.equal(safeLinkUrl('https://news.hada.io/topic?id=1'), 'https://news.hada.io/topic?id=1');
+  assert.equal(safeLinkUrl('javascript:alert(1)'), null);
+  assert.equal(safeLinkUrl(`https://e.com/${ESC}\\x`), null);
+  assert.equal(safeLinkUrl('https://e.com/\u0007'), null);
+  assert.equal(safeLinkUrl('https://e.com/a b'), null);
+  assert.equal(safeLinkUrl(42), null);
 });
 
 test('pinglet hud flags update config and reject bad values', async () => {

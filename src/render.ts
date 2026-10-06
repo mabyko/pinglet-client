@@ -50,12 +50,26 @@ export function sanitizeForTerminal(text: string): string {
 
 /** 작성자 닉네임 없이 메시지만 표시한다 (spinner verb용). */
 export function formatPing(message: FeedMessage): string {
+  if (message.contentType === "NEWS") {
+    return `${supportsUnicode() ? "📰" : "[news]"} ${sanitizeForTerminal(message.text)}`;
+  }
   const sponsored = message.contentType === "SPONSORED" ? "[AD] " : "";
   const text = sanitizeForTerminal(message.text);
   if (supportsUnicode()) {
     return `💌 ${sponsored}"${text}"`;
   }
   return `[ping] ${sponsored}"${text}"`;
+}
+
+/**
+ * statusline용 뉴스 한 줄: 제목을 OSC 8 하이퍼링크로 감싸 클릭하면 원문으로 간다.
+ * 제목은 감싸기 전에 sanitize한다 — 완성된 escape를 sanitize에 넣으면 시퀀스가 지워진다.
+ * url은 fetchFeed의 safeLinkUrl을 통과한 값만 온다. 없으면 제목만 보여준다.
+ */
+export function formatNewsLink(title: string, url?: string | null): string {
+  const text = `${supportsUnicode() ? "📰" : "[news]"} ${sanitizeForTerminal(title)}`;
+  if (!url) return text;
+  return `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\`;
 }
 
 /** statusline용: 지금 함께 켜져 있는 다른 터미널 수 한 줄. */

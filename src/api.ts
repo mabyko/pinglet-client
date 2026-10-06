@@ -68,6 +68,24 @@ interface FeedItem {
   contentType: string;
   category: string | null;
   expiresAt?: string | null;
+  url?: string | null;
+}
+
+const MAX_URL_LENGTH = 2048;
+
+/**
+ * statusline이 OSC 8 링크로 감싸므로, ESC·BEL 같은 제어 문자나 공백이 있으면
+ * 시퀀스를 탈출할 수 있다. http(s)만 받고 나머지는 링크 없이 제목만 보여준다.
+ */
+export function safeLinkUrl(url: unknown): string | null {
+  if (typeof url !== "string" || url.length === 0 || url.length > MAX_URL_LENGTH) return null;
+  if (/[\s\p{Cc}\p{Cf}]/u.test(url)) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 /** GET /feed — 로컬 캐시용 메시지 30~50개를 미리 받는다. */
@@ -92,9 +110,10 @@ export async function fetchFeed(
       category: item.category,
       expiresAt: item.expiresAt,
       contentType:
-        item.contentType === "SYSTEM" || item.contentType === "SPONSORED"
+        item.contentType === "SYSTEM" || item.contentType === "SPONSORED" || item.contentType === "NEWS"
           ? item.contentType
           : "USER",
+      url: safeLinkUrl(item.url),
     }));
 }
 

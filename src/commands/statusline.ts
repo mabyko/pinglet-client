@@ -2,11 +2,10 @@ import * as fs from "fs";
 import { CONFIG_PATH, loadConfig } from "../config";
 import {
   loadFeedMessages,
-  loadOnline,
   loadState,
   saveState,
 } from "../cache";
-import { formatOnlineNow } from "../render";
+import { formatNewsLink } from "../render";
 import { pickMessage } from "../picker";
 import { appendEvent } from "../queue";
 import { armSpinnerMessage } from "../adapters/claude";
@@ -18,26 +17,9 @@ import { StatuslinePayload } from "../hud/stdin";
 /** 잠금 안에서 끝낸 tick의 결과 — 잠금을 놓은 뒤 HUD를 그려 출력한다. */
 export interface StatuslineTick {
   payload: StatuslinePayload;
-  /** HUD 위에 먼저 나올 줄 ("함께 코딩 중"). */
+  /** HUD 위에 먼저 나올 줄 (지금 spinner에 armed된 뉴스 링크). */
   lines: string[];
   hud: HudConfig;
-}
-
-/**
- * online 캐시 유효 기간 — refresh(≈5분) 2주기. 서버의 온라인 판정 창
- * (ONLINE_WINDOW_MS 10분)과 정렬해, 서버가 이미 오프라인으로 세는 시점에
- * 클라이언트가 옛 숫자를 "지금"이라고 보여주지 않게 한다.
- */
-const ONLINE_STALE_MS = 10 * 60_000;
-
-/** 신선한 online 캐시가 있을 때, 나를 제외한 켜진 터미널 수 (없거나 혼자면 null). */
-function onlineOthers(now: number): number | null {
-  const cache = loadOnline();
-  if (!cache) return null;
-  const t = Date.parse(cache.updatedAt);
-  if (Number.isNaN(t) || now - t > ONLINE_STALE_MS) return null;
-  const others = cache.onlineInstallations - 1; // 이 기기의 heartbeat 제외
-  return others >= 1 ? others : null;
 }
 
 function readPayload(): StatuslinePayload {
@@ -124,6 +106,7 @@ function rotateSpinner(state: RuntimeState, now: number): void {
     messageId: message.id,
     text: message.text,
     author: message.author,
+    url: message.url ?? null,
     shownAt: now,
     visibleMs: 0,
   };
@@ -164,13 +147,14 @@ export function runStatusline(): StatuslineTick | undefined {
   }
 
   const lines: string[] = [];
-  const others = onlineOthers(now);
-  if (others !== null) lines.push(formatOnlineNow(others));
+  // spinner와 같은 항목을 링크로 보여준다. HUD 세그먼트 폭 계산(hud/width)은
+  // OSC 8을 모르므로 HUD 안이 아니라 별도 줄로 둔다.
+  if (state.current?.url) lines.push(formatNewsLink(state.current.text, state.current.url));
   return { payload, lines, hud: loadHudConfig(config) };
 }
 
 /**
- * 잠금 밖에서 HUD(모델·컨텍스트·사용량·활동)를 그려 "함께 코딩 중" 줄 아래에 출력한다.
+ * 잠금 밖에서 HUD(모델·컨텍스트·사용량·활동)를 그려 뉴스 링크 줄 아래에 출력한다.
  * HUD는 실패해도 위 줄에 영향을 주면 안 된다.
  */
 export async function writeStatusline(
