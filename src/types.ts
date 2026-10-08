@@ -50,6 +50,8 @@ export interface RuntimeState {
   seen: Record<string, number>;
   /** DELIVERED 이벤트를 이미 보낸 messageId 집합 */
   delivered?: Record<string, number>;
+  /** session_id -> 턴 진행 중으로 마지막 확인한 시각(epoch ms). 하나라도 있으면 회전을 미룬다. */
+  busySessions?: Record<string, number>;
   /** session_id -> 마지막으로 본 cost.total_api_duration_ms (spinner 활동 감지용) */
   sessions?: Record<string, number>;
   lastTickAt?: number;

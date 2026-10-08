@@ -409,6 +409,51 @@ test('statusline prints the armed news link first and the HUD below it', async (
   assert.match((await tick(payload, now + 10000))[1], /^\[Opus 5/);
 });
 
+test('spinner and statusline stay on the same news item until the turn ends', async () => {
+  const items = ['A', 'B', 'C'].map((id) => ({ id, text: `news ${id}`, author: 'x', contentType: 'NEWS', url: `https://example.com/${id}` }));
+  const writeFeed = (clock) => fs.writeFileSync(config.FEED_PATH, JSON.stringify({ fetchedAt: new Date(clock).toISOString(), messages: items }));
+  const verb = () => JSON.parse(fs.readFileSync(settingsPath, 'utf8')).spinnerVerbs.verbs[0];
+  const busyTurn = [...transcriptEntries,
+    { type: 'user', message: { content: 'next prompt' } },
+    { type: 'assistant', message: { stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 'b1', name: 'Bash', input: { command: 'sleep' } }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'b1' }] } },
+    { type: 'attachment' }];
+  writeFeed(now);
+  writeTranscript(busyTurn);
+  const first = (await tick(payload))[0];
+  const armed = verb();
+  // Well past ROTATE_MS but still mid-turn: neither the spinner nor the link line moves.
+  const later = now + 5 * 60_000;
+  writeFeed(later);
+  assert.equal((await tick(payload, later))[0], first);
+  assert.equal(verb(), armed);
+  assert.ok(armed.includes(first.replace('📰 ', '')), `${armed} vs ${first}`);
+  // Another idle session must not rotate the shared spinner while this turn runs.
+  const otherTranscript = path.join(fixture, 'other.jsonl');
+  fs.writeFileSync(otherTranscript, JSON.stringify({ type: 'system', subtype: 'turn_duration' }) + '\n');
+  assert.equal((await tick({ ...payload, session_id: 'other', transcript_path: otherTranscript }, later + 1000))[0], first);
+  // Turn ends: the next tick rotates both together.
+  writeTranscript([...busyTurn, { type: 'assistant', message: { stop_reason: 'end_turn', content: [{ type: 'text', text: 'done' }] } },
+    { type: 'system', subtype: 'turn_duration' }]);
+  const next = (await tick(payload, later + 2000))[0];
+  assert.notEqual(next, first);
+  assert.ok(verb().includes(next.replace('📰 ', '')), `${verb()} vs ${next}`);
+});
+
+test('interrupted, finished or stale turns do not block rotation', () => {
+  const { isTurnInProgress, TURN_STALE_MS } = require('../dist/turn');
+  const file = path.join(fixture, 'turn.jsonl');
+  const at = (entries) => { fs.writeFileSync(file, entries.map(line).join('\n') + '\n'); return isTurnInProgress(file, Date.now()); };
+  assert.equal(at([{ type: 'user', message: { content: 'go' } }]), true);
+  assert.equal(at([{ type: 'user', message: { content: 'go' } }, { type: 'user', message: { content: [{ type: 'text', text: '[Request interrupted by user]' }] } }]), false);
+  assert.equal(at([{ type: 'assistant', message: { stop_reason: 'end_turn', content: [] } }, { type: 'attachment' }]), false);
+  assert.equal(at([{ type: 'user', message: { content: 'go' } }, '{broken']), true);
+  fs.writeFileSync(file, line({ type: 'user', message: { content: 'go' } }) + '\n');
+  assert.equal(isTurnInProgress(file, Date.now() + TURN_STALE_MS + 1000), false);
+  assert.equal(isTurnInProgress(path.join(fixture, 'missing.jsonl'), Date.now()), false);
+  assert.equal(isTurnInProgress(undefined, Date.now()), false);
+});
+
 test('news link line is an OSC 8 hyperlink and drops unsafe urls', () => {
   const { formatNewsLink } = require('../dist/render');
   const { safeLinkUrl } = require('../dist/api');

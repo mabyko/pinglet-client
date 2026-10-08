@@ -11,6 +11,7 @@ import { appendEvent } from "../queue";
 import { armSpinnerMessage } from "../adapters/claude";
 import { QUALIFIED_MS, ROTATE_MS, runMaintenance } from "../runtime";
 import { RuntimeState } from "../types";
+import { isTurnInProgress, TURN_STALE_MS } from "../turn";
 import { HudConfig, loadHudConfig, renderHudLines } from "../hud";
 import { StatuslinePayload } from "../hud/stdin";
 
@@ -56,6 +57,25 @@ function trackSpinnerActivity(
     (state.current.visibleMs ?? 0) + (apiMs - prev),
     ROTATE_MS,
   );
+}
+
+/**
+ * spinner는 시작할 때 고른 문구를 턴 끝까지 유지한다. spinnerVerbs는 모든 세션이
+ * 공유하므로, 어느 세션이든 턴이 진행 중이면 회전을 미뤄 spinner와 statusline을 맞춘다.
+ * 세션이 턴 도중 닫혀도 TURN_STALE_MS 뒤에는 기록이 풀린다.
+ */
+function updateBusySessions(state: RuntimeState, payload: StatuslinePayload, now: number): boolean {
+  const busy = state.busySessions ?? {};
+  const sessionId = payload.session_id;
+  if (sessionId) {
+    if (isTurnInProgress(payload.transcript_path, now)) busy[sessionId] = now;
+    else delete busy[sessionId];
+  }
+  for (const [id, seenAt] of Object.entries(busy)) {
+    if (now - seenAt > TURN_STALE_MS) delete busy[id];
+  }
+  state.busySessions = Object.keys(busy).length > 0 ? busy : undefined;
+  return state.busySessions !== undefined;
 }
 
 /**
@@ -129,8 +149,11 @@ export function runStatusline(): StatuslineTick | undefined {
 
   trackSpinnerActivity(state, payload);
 
-  const rotateDue = !state.current || now - state.current.shownAt >= ROTATE_MS ||
-    !loadFeedMessages().some((message) => message.id === state.current?.messageId);
+  const turnBusy = updateBusySessions(state, payload, now);
+  // 피드에서 빠진(삭제·만료) 항목은 턴 중이라도 바로 내린다.
+  const rotateDue = !state.current ||
+    !loadFeedMessages().some((message) => message.id === state.current?.messageId) ||
+    (!turnBusy && now - state.current.shownAt >= ROTATE_MS);
   // 300ms마다 호출되므로 저장/maintenance는 1초 스로틀. 회전 시점에는 항상 저장.
   const saveDue =
     rotateDue ||
